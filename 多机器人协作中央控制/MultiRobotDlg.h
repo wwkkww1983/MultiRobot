@@ -3,6 +3,9 @@
 //
 
 #pragma once
+#include "afxvslistbox.h"
+#include "afxwin.h"
+#include "afxcmn.h"
 
 
 // CMultiRobotDlg 对话框
@@ -24,6 +27,7 @@ public:
 // 实现
 protected:
 	HICON m_hIcon;
+	CMenu m_Menu;
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -31,4 +35,49 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+public:
+	// 机器人列表,对应robotAPI中机器人服务器类的robotlist，选中则聚焦这个机器人。
+	CListBox m_RobotList;
+	// 选中机器人的电压
+	float m_voltage;
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	//对比更新robotlist的显示
+	void updataRobotListDisplay();
+
+
+	int keyflag = 0;//用于判断按键状态，是按下状态还是没按状态。0是没按
+	
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
+//	afx_msg void OnEnChangeEdit2();
+	//定义用于显示IMU位姿信息
+	float m_angular_velocity_x;
+	float m_angular_velocity_y;
+	float m_angular_velocity_z;
+	float m_linear_acceleration_x;
+	float m_linear_acceleration_y;
+	float m_linear_acceleration_z;
+	float m_roll;
+	float m_pitch;
+	float m_yaw;
+	// 运动使能
+	CButton m_moveEnable;
+	afx_msg void OnBnClickedCheck1();
+	// 移动的速度
+	CSliderCtrl m_movelin;
+	// 移动的角度
+	CSliderCtrl m_moveang;
+	int m_movelin_display;
+//	CEdit m_moveang_display;
+//	afx_msg void OnTRBNThumbPosChangingSlider1(NMHDR *pNMHDR, LRESULT *pResult);
+	int m_moveang_display;
+	afx_msg void OnNMCustomdrawSlider1(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnNMCustomdrawSlider2(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnBnClickedButton1();
+	afx_msg void OnBnClickedButton2();
+	// 用于表示wsad按键是否使用滑动块的参数来跑
+	CButton m_wsadFlag;
 };
+
+
+DWORD WINAPI ListenAcceptThreadFun(LPVOID p);
+DWORD WINAPI updataRobotStatusThreadFun(LPVOID p);

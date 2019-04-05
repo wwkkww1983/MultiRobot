@@ -9,6 +9,8 @@
 #endif
 
 #include "resource.h"		// Ö÷·ûºÅ
+#include "robotAPI.h"
+#include "quat2Euler.h"
 
 
 // CMultiRobotApp: 
@@ -25,6 +27,7 @@ public:
 	virtual BOOL InitInstance();
 
 // ÊµÏÖ
+	ROBOTServer robotServer;
 
 	DECLARE_MESSAGE_MAP()
 };
