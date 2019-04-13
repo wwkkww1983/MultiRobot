@@ -76,8 +76,26 @@ public:
 	afx_msg void OnBnClickedButton2();
 	// 用于表示wsad按键是否使用滑动块的参数来跑
 	CButton m_wsadFlag;
+	afx_msg void On32775();
+	// 显示IP地址和端口号
+	CEdit m_disIPaddr;
+	// 展示IPC的列表
+	CListBox m_IPClist;
+	// 显示所选IPC的rtsp地址
+	CString m_rtsp;
+	afx_msg void OnLbnSelchangeList1();
+	afx_msg void OnDestroy();
 };
 
+//核心！！！！！
+//程序的几大线程
 
+//socket监听线程
 DWORD WINAPI ListenAcceptThreadFun(LPVOID p);
+//-socket子线程
 DWORD WINAPI updataRobotStatusThreadFun(LPVOID p);
+
+//IPC视觉处理定位线程
+DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p);
+//-IPC子处理线程
+DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p);

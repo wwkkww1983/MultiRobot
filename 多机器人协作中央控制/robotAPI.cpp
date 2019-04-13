@@ -1,4 +1,12 @@
-//°æ±¾ºÅ£ºbeta 0.1
+ï»¿/*
+robotAPI
+è¯´  æ˜ï¼šå®ç°äº†åŸºæœ¬é€šè®¯åŠŸèƒ½ï¼Œæ“ä½œæœºå™¨äºº
+åˆ¶ä½œäººï¼šé‚¹æ™ºå¼º
+ç‰ˆ  æœ¬ï¼šbeta 0.2
+æ›´  æ–°ï¼š
+	1ã€æ·»åŠ äº†ï¼šsocketç›‘å¬å¥—æ¥å­—çš„è¶…æ—¶è®¾ç½®
+	2ã€æ·»åŠ äº†ï¼šå¾—åˆ°æœ¬åœ°æœåŠ¡å™¨IPåœ°å€çš„æ¥å£
+*/
 
 
 #include "stdafx.h"
@@ -6,14 +14,14 @@
 
 
 /*-----------------------------------------------------------------------------
-						robotº¯Êı½Ó¿Ú¶¨Òå
+						robotå‡½æ•°æ¥å£å®šä¹‰
 							 class
 ------------------------------------------------------------------------------*/
 robot::robot(SOCKET socket, struct sockaddr_in sin)
 { 
 	robotsock = socket;
 	socksin = sin;
-	//Ë¢ĞÂ»úÆ÷ÈË¹Ì¼şĞÅÏ¢
+	//åˆ·æ–°æœºå™¨äººå›ºä»¶ä¿¡æ¯
 	robotID = getID();
 	if (robotID == 0)
 	{
@@ -29,7 +37,7 @@ robot::robot(SOCKET socket, struct sockaddr_in sin)
 
 
 /*******************************************************************************
-* ËµÃ÷£º·µ»Ø»úÆ÷ÈËIDºÅ
+* è¯´æ˜ï¼šè¿”å›æœºå™¨äººIDå·
 *******************************************************************************/
 uint8_t robot::getID(void)
 {
@@ -60,11 +68,11 @@ uint8_t robot::getID(void)
 
 }
 /*******************************************************************************
-* »úÆ÷ÈËÒÆ¶¯ÃüÁî
-ËµÃ÷£º¸ø¶¨»úÆ÷ÈËÒÆ¶¯ËÙ¶ÈÓë×ªÍä½Ç¶ÈÀ´¿ØÖÆ»úÆ÷ÈËµÄÒÆ¶¯£¬
-ÊäÈë	lin_val		ÒÆ¶¯ËÙ¶È£¬0-0.2ÎªÕı³£Öµ£¬Õâ¸ö²ÎÊı¶Ô»ùÓÚÁ½¸öµç»ú×ªËÙ
-		ang_val		Õâ¸ö²ÎÊı»á»ùÓÚÁ½¸öµç»úÒ»¸ö·´ÏàÖµÒ»°ãÎª0-1.8
-Êä³ö	1/-1		1ÕıÈ·  -1´íÎóÖµ
+* æœºå™¨äººç§»åŠ¨å‘½ä»¤
+è¯´æ˜ï¼šç»™å®šæœºå™¨äººç§»åŠ¨é€Ÿåº¦ä¸è½¬å¼¯è§’åº¦æ¥æ§åˆ¶æœºå™¨äººçš„ç§»åŠ¨ï¼Œ
+è¾“å…¥	lin_val		ç§»åŠ¨é€Ÿåº¦ï¼Œ0-0.2ä¸ºæ­£å¸¸å€¼ï¼Œè¿™ä¸ªå‚æ•°å¯¹åŸºäºä¸¤ä¸ªç”µæœºè½¬é€Ÿ
+		ang_val		è¿™ä¸ªå‚æ•°ä¼šåŸºäºä¸¤ä¸ªç”µæœºä¸€ä¸ªåç›¸å€¼ä¸€èˆ¬ä¸º0-1.8
+è¾“å‡º	1/-1		1æ­£ç¡®  -1é”™è¯¯å€¼
 *******************************************************************************/
 INT8 robot::move(float lin_val, float ang_val)
 {
@@ -96,10 +104,10 @@ INT8 robot::move(float lin_val, float ang_val)
 }
 
 /*******************************************************************************
-* µç»úÇ¿ÖÆÍ£×ª
-ËµÃ÷£ºµç»ú¿ªÆô¹Ø±Õ£º1ÊÇ¿ªÆô£¬0ÊÇ¹Ø±Õ£¨Í¬Ê±»á³õÊ¼»¯£©£¬¹Ø±ÕÖ®ºóÈç¹ûÒªÖØĞÂÔË¶¯µÄ»°£¬
-	  Ó¦¸ÃÏÈ1¿ªÆôÔÙÖ´ĞĞmove
-ÊäÈë	sta	1ÊÇ¿ªÆô£¬0ÊÇ¹Ø±Õ
+* ç”µæœºå¼ºåˆ¶åœè½¬
+è¯´æ˜ï¼šç”µæœºå¼€å¯å…³é—­ï¼š1æ˜¯å¼€å¯ï¼Œ0æ˜¯å…³é—­ï¼ˆåŒæ—¶ä¼šåˆå§‹åŒ–ï¼‰ï¼Œå…³é—­ä¹‹åå¦‚æœè¦é‡æ–°è¿åŠ¨çš„è¯ï¼Œ
+	  åº”è¯¥å…ˆ1å¼€å¯å†æ‰§è¡Œmove
+è¾“å…¥	sta	1æ˜¯å¼€å¯ï¼Œ0æ˜¯å…³é—­
 *******************************************************************************/
 void robot::setTorque(char sta)
 {
@@ -116,7 +124,7 @@ void robot::setTorque(char sta)
 }
 
 /*******************************************************************************
-* ½âÊÍ½ÓÊÕµ½µÄº¯ÊıÃüÁî£¬²¢ÇÒÊÍ·ÅÄÚ´æ¡£
+* è§£é‡Šæ¥æ”¶åˆ°çš„å‡½æ•°å‘½ä»¤ï¼Œå¹¶ä¸”é‡Šæ”¾å†…å­˜ã€‚
 *******************************************************************************/
 rebotATmsg robot::resolverMsg(char rbuf[SEND_LENGHT])
 {
@@ -129,7 +137,7 @@ rebotATmsg robot::resolverMsg(char rbuf[SEND_LENGHT])
 		retmsgz.parmNum = rbuf[readi]; readi++;
 		retmsgz.callret = rbuf[readi]; readi++;
 		retmsgz.cmd = rbuf[readi]; readi++;
-		//¶Á²ÎÊıÊı¾İ
+		//è¯»å‚æ•°æ•°æ®
 		for (int i = 0; i<retmsgz.parmNum; i++)
 		{
 			uint8_t inum = rbuf[readi]; readi++;
@@ -138,7 +146,7 @@ rebotATmsg robot::resolverMsg(char rbuf[SEND_LENGHT])
 				retmsgz.parmdata[i][j]= rbuf[readi]; readi++;
 			}
 		}
-		//ÅĞ¶Ï°üÎ²ÊÇ·ñÕıÈ·
+		//åˆ¤æ–­åŒ…å°¾æ˜¯å¦æ­£ç¡®
 		if ((UINT8)rbuf[readi] == 0xc7) { retmsgz.ret = 1; }
 		else retmsgz.ret = -1;
 
@@ -152,7 +160,7 @@ rebotATmsg robot::resolverMsg(char rbuf[SEND_LENGHT])
 }
 
 /*******************************************************************************
-* µÃµ½µç³ØµçÑ¹£¬»á×èÈû(·Ç×èÈûÓÃupdata)
+* å¾—åˆ°ç”µæ± ç”µå‹ï¼Œä¼šé˜»å¡(éé˜»å¡ç”¨updata)
 *******************************************************************************/
 imu_msg robot::getIMU()
 {
@@ -183,7 +191,7 @@ imu_msg robot::getIMU()
 }
 
 /*******************************************************************************
-* µÃµ½µç³ØµçÑ¹£¬»á×èÈû(·Ç×èÈûÓÃupdata),¼ì²éÍøÂçÌØĞÔ
+* å¾—åˆ°ç”µæ± ç”µå‹ï¼Œä¼šé˜»å¡(éé˜»å¡ç”¨updata),æ£€æŸ¥ç½‘ç»œç‰¹æ€§
 *******************************************************************************/
 float robot::getVoltage(void)
 {
@@ -193,7 +201,7 @@ float robot::getVoltage(void)
 
 	char recvbuf[SEND_LENGHT];
 	int recvLen=recv(robotsock, recvbuf, sizeof(recvbuf), 0);
-	//¼ì²éÍøÂçÖÊÁ¿
+	//æ£€æŸ¥ç½‘ç»œè´¨é‡
 	if (recvLen == 0)
 	{
 		connectStatus = ROBOT_connectStatus_CHECKERROR;
@@ -216,7 +224,7 @@ float robot::getVoltage(void)
 	rebotATmsg atmsg = resolverMsg(recvbuf);
 	if (atmsg.ret > 0 && atmsg.callret == 1 && atmsg.cmd == 0x05)
 	{
-		//»ñÈ¡²ÎÊı
+		//è·å–å‚æ•°
 		float_to_char volt;
 		for (int i = 0; i<4; i++)
 		{
@@ -231,7 +239,7 @@ float robot::getVoltage(void)
 
 }
 /*******************************************************************************
-* µÃµ½¹âÕÕÇ¿¶È£¬»á×èÈû(·Ç×èÈûÓÃupdata)£¨ÓëgetVoltage¹«ÓÃ·µ»ØÓò£©
+* å¾—åˆ°å…‰ç…§å¼ºåº¦ï¼Œä¼šé˜»å¡(éé˜»å¡ç”¨updata)ï¼ˆä¸getVoltageå…¬ç”¨è¿”å›åŸŸï¼‰
 *******************************************************************************/
 float robot::getIllumination(void)
 {
@@ -255,7 +263,7 @@ float robot::getIllumination(void)
 	rebotATmsg atmsg = resolverMsg(recvbuf);
 	if (atmsg.ret > 0 && atmsg.callret == 1 && atmsg.cmd == 0x09)
 	{
-		//»ñÈ¡²ÎÊı
+		//è·å–å‚æ•°
 		float_to_char Illumi;
 		for (int i = 0; i<4; i++)
 		{
@@ -271,10 +279,10 @@ float robot::getIllumination(void)
 
 
 /*******************************************************************************
-* ¿ØÖÆLEDµÆ
-ÊäÈë	lednum	led±àºÅ£¨1-4£©
-		Onoff	¿ªµÆ/¹ØµÆ£¨1/0£©
-·µ»Ø	Ret	Í¨Ñ¶ÊÇ·ñ³É¹¦£¨send·µ»ØÖµ£©
+* æ§åˆ¶LEDç¯
+è¾“å…¥	lednum	ledç¼–å·ï¼ˆ1-4ï¼‰
+		Onoff	å¼€ç¯/å…³ç¯ï¼ˆ1/0ï¼‰
+è¿”å›	Ret	é€šè®¯æ˜¯å¦æˆåŠŸï¼ˆsendè¿”å›å€¼ï¼‰
 *******************************************************************************/
 uint8_t robot::setLED(uint8_t lednum, uint8_t onoff)
 {
@@ -295,9 +303,9 @@ uint8_t robot::setLED(uint8_t lednum, uint8_t onoff)
 }
 
 /*******************************************************************************
-* ·µ»Ø»úÆ÷ÈËµç»úÊ¹ÄÜĞÅÏ¢
-ÊäÈë	
-·µ»Ø	Ê¹ÄÜĞÅÏ¢,1ÊÇ¿ªÆô 0ÊÇ¹Ø¶Ï
+* è¿”å›æœºå™¨äººç”µæœºä½¿èƒ½ä¿¡æ¯
+è¾“å…¥	
+è¿”å›	ä½¿èƒ½ä¿¡æ¯,1æ˜¯å¼€å¯ 0æ˜¯å…³æ–­
 *******************************************************************************/
 uint8_t robot::getTorque()
 {
@@ -328,14 +336,14 @@ uint8_t robot::getTorque()
 
 
 /*-----------------------------------------------------------------------------
-						 ROBOTServerº¯Êı½Ó¿Ú¶¨Òå
+						 ROBOTServerå‡½æ•°æ¥å£å®šä¹‰
 								class
 ------------------------------------------------------------------------------*/
 
 void ROBOTServer::init(int port)
 {
 
-	//³õÊ¼»¯Socket
+	//åˆå§‹åŒ–Socket
 	WORD socket_version = MAKEWORD(2, 2);
 	WSADATA wsadata;
 	if (WSAStartup(socket_version, &wsadata) != 0)
@@ -347,7 +355,7 @@ void ROBOTServer::init(int port)
 
 	ServerSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	//´´½¨socket ²¢ÅĞ¶ÏÊÇ·ñ´´½¨³É¹¦
+	//åˆ›å»ºsocket å¹¶åˆ¤æ–­æ˜¯å¦åˆ›å»ºæˆåŠŸ
 	if (ServerSock == INVALID_SOCKET)
 	{
 		sock_Status = ROBOTServer_INVALID_SOCKET;
@@ -355,20 +363,28 @@ void ROBOTServer::init(int port)
 	}
 
 
-	//ÉèÖÃ·şÎñÆ÷SocketµØÖ·
-	struct sockaddr_in s_sin; //ÓÃÓÚ´æ´¢±¾µØ´´½¨socketµÄ»ù±¾ĞÅÏ¢
-	s_sin.sin_family = AF_INET;  //¶¨ÒåĞ­Òé×åÎªIPV4
-	s_sin.sin_port = htons(port);//¹æ¶¨¶Ë¿ÚºÅ
+	//è®¾ç½®æœåŠ¡å™¨Socketåœ°å€
+	struct sockaddr_in s_sin; //ç”¨äºå­˜å‚¨æœ¬åœ°åˆ›å»ºsocketçš„åŸºæœ¬ä¿¡æ¯
+	s_sin.sin_family = AF_INET;  //å®šä¹‰åè®®æ—ä¸ºIPV4
+	s_sin.sin_port = htons(port);//è§„å®šç«¯å£å·
 	s_sin.sin_addr.S_un.S_addr = INADDR_ANY;
 
-	//°ó¶¨Socket Serverµ½±¾µØµØÖ·
-	if (bind(ServerSock, (LPSOCKADDR)&s_sin, sizeof(s_sin)) == SOCKET_ERROR)//°ó¶¨
+	//ç»‘å®šSocket Serveråˆ°æœ¬åœ°åœ°å€
+	if (bind(ServerSock, (LPSOCKADDR)&s_sin, sizeof(s_sin)) == SOCKET_ERROR)//ç»‘å®š
 	{
 		sock_Status = ROBOTServer_BINDERROR;
 		return;
 	}
-	//´´½¨bind³É¹¦
+	//åˆ›å»ºbindæˆåŠŸ
 	sock_Status = ROBOTServer_BIND_SUCCESS;
+
+	//è®¾ç½®è¶…æ—¶
+	int nNetTimeout = 2000;
+	if (SOCKET_ERROR == setsockopt(ServerSock, SOL_SOCKET, SO_RCVTIMEO, (char *)&nNetTimeout, sizeof(int)))
+	{
+		printf("Set Ser_RecTIMEO error !\r\n");
+	}
+
 	return;
 }
 
@@ -384,18 +400,18 @@ int ROBOTServer::Listen(int maxacp)
 	return listen(ServerSock, maxacp);
 }
 
-//×èÈûÊ½½ÓÊÕ»úÆ÷ÈËµÄÁ¬½Ó
+//é˜»å¡å¼æ¥æ”¶æœºå™¨äººçš„è¿æ¥
 int ROBOTServer::Accept()
 {
-	SOCKET socket_of_client;  //¿Í»§¶Ë£¨Ô¶³Ì£©µÄsocket
-	struct sockaddr_in c_sin; //ÓÃÓÚ´æ´¢ÒÑÁ¬½ÓµÄ¿Í»§¶ËµÄsocket»ù±¾ĞÅÏ¢
-	int    c_sin_len;         //º¯ÊıacceptµÄµÚÈı¸ö²ÎÊı£¬c_sinµÄ´óĞ¡¡£
+	SOCKET socket_of_client;  //å®¢æˆ·ç«¯ï¼ˆè¿œç¨‹ï¼‰çš„socket
+	struct sockaddr_in c_sin; //ç”¨äºå­˜å‚¨å·²è¿æ¥çš„å®¢æˆ·ç«¯çš„socketåŸºæœ¬ä¿¡æ¯
+	int    c_sin_len;         //å‡½æ•°acceptçš„ç¬¬ä¸‰ä¸ªå‚æ•°ï¼Œc_sinçš„å¤§å°ã€‚
 
 	c_sin_len = sizeof(c_sin);
 
 	socket_of_client = accept(ServerSock, (SOCKADDR *)&c_sin, &c_sin_len);
 
-	//½ÓÊÕĞÂÓÃ»§
+	//æ¥æ”¶æ–°ç”¨æˆ·
 	if (socket_of_client == INVALID_SOCKET)
 	{
 		return -1;//Accept error
@@ -408,18 +424,18 @@ int ROBOTServer::Accept()
 	}
 }
 
-//µÃµ½robotlistµÄÁ¬½Ó¸öÊı
+//å¾—åˆ°robotlistçš„è¿æ¥ä¸ªæ•°
 int ROBOTServer::getRobotListNum()
 {
 	return robotlist.size();
 }
-//µÃµ½robotlistÖĞµÚ¼¸¸örobotµÄIPµØÖ·
+//å¾—åˆ°robotlistä¸­ç¬¬å‡ ä¸ªrobotçš„IPåœ°å€
 sockaddr_in ROBOTServer::getRobotIP(int robotlistCont)
 {
 	sockaddr_in ipport;
 	if (robotlistCont >= getRobotListNum())
 	{
-		perror("getRobotIP²»´æÔÚ±àºÅ");
+		perror("getRobotIPä¸å­˜åœ¨ç¼–å·");
 	}
 
 	return robotlist[robotlistCont].socksin;
@@ -436,5 +452,49 @@ int ROBOTServer::findID(uint8_t robotid)
 	}
 	return -1;
 }
+
+bool ROBOTServer::GetLocalAddress(std::string& strAddress)
+{
+	char strHost[30] = { 0 };
+	
+	//Â getÂ hostÂ name,Â ifÂ fail,Â SetLastErrorÂ isÂ calledÂ Â 
+	if(SOCKET_ERROR!=gethostname(strHost, sizeof(strHost)))
+	{
+		struct hostent* hp;
+		hp = gethostbyname(strHost);
+		int i = 0;
+		//Â IPv4:Â AddressÂ isÂ fourÂ bytesÂ (32-bit)Â Â 
+		if (hp->h_length < 4)
+			return false;
+
+		while (hp != NULL&&hp->h_addr_list[i] != NULL)
+		{
+			//å¦‚æœç½‘æ®µå°äº10ï¼ˆå°±æ˜¯è·¯ç”±å™¨çš„å±€åŸŸç½‘ä¸€èˆ¬çš„èŒƒå›´ï¼‰
+			
+			if((UINT)(((PBYTE)hp->h_addr_list[i])[2])<10)
+			{
+				//Â ConvertÂ addressÂ toÂ .Â formatÂ Â 
+				strHost[0] = 0;
+
+				//Â IPv4:Â CreateÂ AddressÂ stringÂ Â 
+				sprintf(strHost, "%u.%u.%u.%u",
+					(UINT)(((PBYTE)hp->h_addr_list[i])[0]),
+					(UINT)(((PBYTE)hp->h_addr_list[i])[1]),
+					(UINT)(((PBYTE)hp->h_addr_list[i])[2]),
+					(UINT)(((PBYTE)hp->h_addr_list[i])[3]));
+
+				strAddress = strHost;
+				return true;
+			}
+			i++;
+		}
+		return false;
+		
+	}
+	else
+		SetLastError(ERROR_INVALID_PARAMETER);
+	return false;
+}
+
 
 

@@ -9,6 +9,7 @@
 #define IDP_SOCKETS_INIT_FAILED         103
 #define IDR_MAINFRAME                   128
 #define IDR_MENU1                       129
+#define IDD_DIALOG1                     133
 #define IDC_LIST4                       1007
 #define IDC_EDIT1                       1008
 #define IDC_EDIT2                       1009
@@ -28,18 +29,24 @@
 #define IDC_EDIT12                      1027
 #define IDC_BUTTON2                     1028
 #define IDC_CHECK2                      1029
+#define IDC_MFCSHELLTREE1               1030
+#define IDC_TREE1                       1031
+#define IDC_EDIT13                      1032
+#define IDC_LIST1                       1033
+#define IDC_EDIT14                      1034
 #define ID_32771                        32771
 #define ID_32772                        32772
 #define ID_32773                        32773
 #define ID_32774                        32774
+#define ID_32775                        32775
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32775
-#define _APS_NEXT_CONTROL_VALUE         1030
+#define _APS_NEXT_RESOURCE_VALUE        135
+#define _APS_NEXT_COMMAND_VALUE         32776
+#define _APS_NEXT_CONTROL_VALUE         1035
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

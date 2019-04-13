@@ -79,14 +79,15 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir);H:\gitLib\OpencvContrib\install\include;</IncludePath>
+    <LibraryPath>H:\gitLib\OpencvContrib\install\x64\vc15\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -170,6 +171,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opencv_aruco340.lib;opencv_bgsegm340.lib;opencv_bioinspired340.lib;opencv_calib3d340.lib;opencv_ccalib340.lib;opencv_core340.lib;opencv_datasets340.lib;opencv_dnn340.lib;opencv_dpm340.lib;opencv_face340.lib;opencv_features2d340.lib;opencv_flann340.lib;opencv_fuzzy340.lib;opencv_hdf340.lib;opencv_highgui340.lib;opencv_imgcodecs340.lib;opencv_imgproc340.lib;opencv_img_hash340.lib;opencv_line_descriptor340.lib;opencv_ml340.lib;opencv_objdetect340.lib;opencv_optflow340.lib;opencv_phase_unwrapping340.lib;opencv_photo340.lib;opencv_plot340.lib;opencv_reg340.lib;opencv_rgbd340.lib;opencv_saliency340.lib;opencv_shape340.lib;opencv_stereo340.lib;opencv_stitching340.lib;opencv_structured_light340.lib;opencv_superres340.lib;opencv_surface_matching340.lib;opencv_text340.lib;opencv_tracking340.lib;opencv_video340.lib;opencv_videoio340.lib;opencv_videostab340.lib;opencv_xfeatures2d340.lib;opencv_ximgproc340.lib;opencv_xobjdetect340.lib;opencv_xphoto340.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -186,17 +188,20 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="directionDlg.h" />
+    <ClInclude Include="IPClocation.h" />
     <ClInclude Include="MultiRobotDlg.h" />
-    <ClInclude Include="quat2Euler.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="robotAPI.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="zfun.h" />
     <ClInclude Include="多机器人协作中央控制.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="directionDlg.cpp" />
+    <ClCompile Include="IPClocation.cpp" />
     <ClCompile Include="MultiRobotDlg.cpp" />
-    <ClCompile Include="quat2Euler.cpp" />
     <ClCompile Include="robotAPI.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -204,6 +209,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="zfun.cpp" />
     <ClCompile Include="多机器人协作中央控制.cpp" />
   </ItemGroup>
   <ItemGroup>

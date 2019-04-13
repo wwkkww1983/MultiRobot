@@ -10,7 +10,8 @@
 
 #include "resource.h"		// 主符号
 #include "robotAPI.h"
-#include "quat2Euler.h"
+#include "zfun.h"
+#include "IPClocation.h"
 
 
 // CMultiRobotApp: 
@@ -28,6 +29,13 @@ public:
 
 // 实现
 	ROBOTServer robotServer;
+	IPClocation visionLSys;//视觉定位系统
+	vector<IPCobj> obj;//场地中的物体
+
+	//另外的一些传输信息
+	vector<Mat> IPCshowImg;//从摄像头上提取出来的经过处理的画面，会实时更新。
+	int seleteimshow = -1;//选择哪一个显示img，-1则是全显示
+	int ThreadOn = 1; //=0代表退出线程
 
 	DECLARE_MESSAGE_MAP()
 };

@@ -36,7 +36,13 @@
     <ClInclude Include="robotAPI.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="quat2Euler.h">
+    <ClInclude Include="directionDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="zfun.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="IPClocation.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -53,7 +59,13 @@
     <ClCompile Include="robotAPI.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="quat2Euler.cpp">
+    <ClCompile Include="directionDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="zfun.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="IPClocation.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

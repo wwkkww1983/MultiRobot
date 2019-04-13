@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<IPCNum>1</IPCNum>
+<r0>"rtsp://admin:zou133zzq@192.168.1.108:554/cam/realmonitor?channel=1&amp;subtype=0&amp;unicast=true&amp;proto=Onvif"</r0>
+<M0 type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>3</cols>
+  <dt>d</dt>
+  <data>
+    2.0292068646497314e+03 0. 9.4521969337925975e+02 0.
+    2.0272986630388705e+03 4.8855567973538348e+02 0. 0. 1.</data></M0>
+<D0 type_id="opencv-matrix">
+  <rows>1</rows>
+  <cols>5</cols>
+  <dt>d</dt>
+  <data>
+    -2.4346447577096426e-02 -4.9984598550300213e-01
+    -6.7086646878954043e-03 -3.0807044850703381e-03 0.</data></D0>
+<R0 type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>3</cols>
+  <dt>d</dt>
+  <data>
+    -7.5594181162167162e-01 6.5054839274637233e-01
+    7.3066860732188599e-02 4.3508244844429939e-01 5.8266712050872005e-01
+    -6.8644175989940404e-01 -4.8913724096398437e-01
+    -4.8711991888362477e-01 -7.2350462619733957e-01</data></R0>
+<T0 type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>1</cols>
+  <dt>d</dt>
+  <data>
+    8.0962349159227731e-02 -6.8233129755382882e-01
+    4.5095365915826084e+00</data></T0>
+</opencv_storage>

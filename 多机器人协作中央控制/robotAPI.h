@@ -1,5 +1,12 @@
-//版本号：beta 0.1
-//实现了基本通讯功能，操作机器人
+/*
+robotAPI
+说  明：实现了基本通讯功能，操作机器人
+制作人：邹智强
+版  本：beta 0.2
+更  新：
+1、添加了：socket监听套接字的超时设置
+2、添加了：得到本地服务器IP地址的接口
+*/
 
 
 #pragma once
@@ -187,6 +194,8 @@ public:
 	sockaddr_in getRobotIP(int robotlistCont);
 	//在robotlist中查找ID号并返回引索，-1表示没有
 	int findID(uint8_t robotid);
+	//获取本机IP地址
+	bool GetLocalAddress(std::string& strAddress);
 
 	
 };

@@ -1,11 +1,13 @@
-
-// MultiRobotDlg.cpp : ÊµÏÖÎÄ¼ş
+ï»¿
+// MultiRobotDlg.cpp : å®ç°æ–‡ä»¶
 //
 
+
 #include "stdafx.h"
-#include "¶à»úÆ÷ÈËĞ­×÷ÖĞÑë¿ØÖÆ.h"
+#include "å¤šæœºå™¨äººåä½œä¸­å¤®æ§åˆ¶.h"
 #include "MultiRobotDlg.h"
 #include "afxdialogex.h"
+#include "directionDlg.h"
 
 
 #ifdef _DEBUG
@@ -13,22 +15,22 @@
 #endif
 
 
-// ÓÃÓÚÓ¦ÓÃ³ÌĞò¡°¹ØÓÚ¡±²Ëµ¥ÏîµÄ CAboutDlg ¶Ô»°¿ò
+// ç”¨äºåº”ç”¨ç¨‹åºâ€œå…³äºâ€èœå•é¡¹çš„ CAboutDlg å¯¹è¯æ¡†
 
 class CAboutDlg : public CDialogEx
 {
 public:
 	CAboutDlg();
 
-// ¶Ô»°¿òÊı¾İ
+// å¯¹è¯æ¡†æ•°æ®
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ABOUTBOX };
 #endif
 
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV Ö§³Ö
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV æ”¯æŒ
 
-// ÊµÏÖ
+// å®ç°
 protected:
 	DECLARE_MESSAGE_MAP()
 public:
@@ -48,7 +50,7 @@ BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
-// CMultiRobotDlg ¶Ô»°¿ò
+// CMultiRobotDlg å¯¹è¯æ¡†
 
 
 
@@ -66,6 +68,7 @@ CMultiRobotDlg::CMultiRobotDlg(CWnd* pParent /*=NULL*/)
 	, m_yaw(0)
 	, m_movelin_display(0)
 	, m_moveang_display(0)
+	, m_rtsp(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -94,6 +97,9 @@ void CMultiRobotDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT12, m_moveang_display);
 	DDV_MinMaxInt(pDX, m_moveang_display, -180, 180);
 	DDX_Control(pDX, IDC_CHECK2, m_wsadFlag);
+	DDX_Control(pDX, IDC_EDIT13, m_disIPaddr);
+	DDX_Control(pDX, IDC_LIST1, m_IPClist);
+	DDX_Text(pDX, IDC_EDIT14, m_rtsp);
 }
 
 BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
@@ -107,18 +113,21 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SLIDER2, &CMultiRobotDlg::OnNMCustomdrawSlider2)
 	ON_BN_CLICKED(IDC_BUTTON1, &CMultiRobotDlg::OnBnClickedButton1)
 	ON_BN_CLICKED(IDC_BUTTON2, &CMultiRobotDlg::OnBnClickedButton2)
+	ON_COMMAND(ID_32775, &CMultiRobotDlg::On32775)
+	ON_LBN_SELCHANGE(IDC_LIST1, &CMultiRobotDlg::OnLbnSelchangeList1)
+	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 
-// CMultiRobotDlg ÏûÏ¢´¦Àí³ÌĞò
+// CMultiRobotDlg æ¶ˆæ¯å¤„ç†ç¨‹åº
 
 BOOL CMultiRobotDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	// ½«¡°¹ØÓÚ...¡±²Ëµ¥ÏîÌí¼Óµ½ÏµÍ³²Ëµ¥ÖĞ¡£
+	// å°†â€œå…³äº...â€èœå•é¡¹æ·»åŠ åˆ°ç³»ç»Ÿèœå•ä¸­ã€‚
 
-	// IDM_ABOUTBOX ±ØĞëÔÚÏµÍ³ÃüÁî·¶Î§ÄÚ¡£
+	// IDM_ABOUTBOX å¿…é¡»åœ¨ç³»ç»Ÿå‘½ä»¤èŒƒå›´å†…ã€‚
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
@@ -136,41 +145,57 @@ BOOL CMultiRobotDlg::OnInitDialog()
 		}
 	}
 
-	// ÉèÖÃ´Ë¶Ô»°¿òµÄÍ¼±ê¡£  µ±Ó¦ÓÃ³ÌĞòÖ÷´°¿Ú²»ÊÇ¶Ô»°¿òÊ±£¬¿ò¼Ü½«×Ô¶¯
-	//  Ö´ĞĞ´Ë²Ù×÷
-	SetIcon(m_hIcon, TRUE);			// ÉèÖÃ´óÍ¼±ê
-	SetIcon(m_hIcon, FALSE);		// ÉèÖÃĞ¡Í¼±ê
+	// è®¾ç½®æ­¤å¯¹è¯æ¡†çš„å›¾æ ‡ã€‚  å½“åº”ç”¨ç¨‹åºä¸»çª—å£ä¸æ˜¯å¯¹è¯æ¡†æ—¶ï¼Œæ¡†æ¶å°†è‡ªåŠ¨
+	//  æ‰§è¡Œæ­¤æ“ä½œ
+	SetIcon(m_hIcon, TRUE);			// è®¾ç½®å¤§å›¾æ ‡
+	SetIcon(m_hIcon, FALSE);		// è®¾ç½®å°å›¾æ ‡
 
 
-	//***************************************** TODO: ÔÚ´ËÌí¼Ó¶îÍâµÄ³õÊ¼»¯´úÂë
-	m_Menu.LoadMenu(IDR_MENU1);//³õÊ¼»¯²Ëµ¥
+	//***************************************** TODO: åœ¨æ­¤æ·»åŠ é¢å¤–çš„åˆå§‹åŒ–ä»£ç 
+	m_Menu.LoadMenu(IDR_MENU1);//åˆå§‹åŒ–èœå•
 	SetMenu(&m_Menu);
-	//zzq²âÊÔ´úÂë
-	theApp.robotServer.init(6000);
+	//zzqæµ‹è¯•ä»£ç 
+	int ipport = 6000;
+	theApp.robotServer.init(ipport);
 	if (theApp.robotServer.is_Open() < 0)
 	{
-		AfxMessageBox(_T("·şÎñÆ÷³õÊ¼»¯Ê§°Ü"));
+		AfxMessageBox(_T("æœåŠ¡å™¨åˆå§‹åŒ–å¤±è´¥"));
 	}
 	theApp.robotServer.hMutex = CreateMutex(NULL, FALSE, NULL);
-	//¿ªÆô¼àÌıÏß³Ì
+	//å¼€å¯ç›‘å¬çº¿ç¨‹
 	theApp.robotServer.hListenThread = CreateThread(NULL, 0, ListenAcceptThreadFun, NULL, 0, &theApp.robotServer.ListenThreadID);
-	//ÉèÖÃ¶Ô»°¿òË¢ĞÂÊ±¼ä
+	//è®¾ç½®å¯¹è¯æ¡†åˆ·æ–°æ—¶é—´
 	SetTimer(1, 500, NULL); m_voltage = 0;
-	//³õÊ¼»¯ÔË¶¯¿ØÖÆ»¬¶¯Ìõ
+	//åˆå§‹åŒ–è¿åŠ¨æ§åˆ¶æ»‘åŠ¨æ¡
 	m_movelin.SetRange(-50, 50);
 	m_movelin.SetTicFreq(5);
 	m_movelin.SetPos(0);
-	//m_movelin.SetLineSize(5);//Ò»ĞĞµÄ´óĞ¡£¬¶ÔÓ¦¼üÅÌµÄ·½Ïò¼ü
+	//m_movelin.SetLineSize(5);//ä¸€è¡Œçš„å¤§å°ï¼Œå¯¹åº”é”®ç›˜çš„æ–¹å‘é”®
 	m_moveang.SetRange(-180, 180);
 	m_moveang.SetTicFreq(5);
 	m_moveang.SetPos(0);
+	//æ˜¾ç¤ºæœ¬æœºIP
+	string strip;
+	theApp.robotServer.GetLocalAddress(strip);
+	CString cstrip(strip.c_str());
+	CString ipportstr;
+	ipportstr.Format(_T("%d"), ipport);
+	cstrip = cstrip + ":" + ipportstr;
+	m_disIPaddr.ReplaceSel(cstrip);
+	//åˆå§‹åŒ–IPC
+	theApp.visionLSys.bindxml("IPCxml.xml");
+	theApp.visionLSys.hMutex = CreateMutex(NULL, FALSE, NULL);
+	theApp.visionLSys.hThread = CreateThread(NULL, 0, IPCvisionLocationSystemThreadFun, NULL, 0, &theApp.visionLSys.ThreadID);
+	for (size_t i = 0; i < theApp.visionLSys.IPC.size(); i++)
+	{
+		CString IPCname;
+		IPCname.Format(_T("IPC:%d"), i);
+		m_IPClist.AddString(IPCname);
+	}
 	
 
 
-
-
-
-	return TRUE;  // ³ı·Ç½«½¹µãÉèÖÃµ½¿Ø¼ş£¬·ñÔò·µ»Ø TRUE
+	return TRUE;  // é™¤éå°†ç„¦ç‚¹è®¾ç½®åˆ°æ§ä»¶ï¼Œå¦åˆ™è¿”å› TRUE
 }
 
 void CMultiRobotDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -186,19 +211,19 @@ void CMultiRobotDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 }
 
-// Èç¹ûÏò¶Ô»°¿òÌí¼Ó×îĞ¡»¯°´Å¥£¬ÔòĞèÒªÏÂÃæµÄ´úÂë
-//  À´»æÖÆ¸ÃÍ¼±ê¡£  ¶ÔÓÚÊ¹ÓÃÎÄµµ/ÊÓÍ¼Ä£ĞÍµÄ MFC Ó¦ÓÃ³ÌĞò£¬
-//  Õâ½«ÓÉ¿ò¼Ü×Ô¶¯Íê³É¡£
+// å¦‚æœå‘å¯¹è¯æ¡†æ·»åŠ æœ€å°åŒ–æŒ‰é’®ï¼Œåˆ™éœ€è¦ä¸‹é¢çš„ä»£ç 
+//  æ¥ç»˜åˆ¶è¯¥å›¾æ ‡ã€‚  å¯¹äºä½¿ç”¨æ–‡æ¡£/è§†å›¾æ¨¡å‹çš„ MFC åº”ç”¨ç¨‹åºï¼Œ
+//  è¿™å°†ç”±æ¡†æ¶è‡ªåŠ¨å®Œæˆã€‚
 
 void CMultiRobotDlg::OnPaint()
 {
 	if (IsIconic())
 	{
-		CPaintDC dc(this); // ÓÃÓÚ»æÖÆµÄÉè±¸ÉÏÏÂÎÄ
+		CPaintDC dc(this); // ç”¨äºç»˜åˆ¶çš„è®¾å¤‡ä¸Šä¸‹æ–‡
 
 		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		// Ê¹Í¼±êÔÚ¹¤×÷Çø¾ØĞÎÖĞ¾ÓÖĞ
+		// ä½¿å›¾æ ‡åœ¨å·¥ä½œåŒºçŸ©å½¢ä¸­å±…ä¸­
 		int cxIcon = GetSystemMetrics(SM_CXICON);
 		int cyIcon = GetSystemMetrics(SM_CYICON);
 		CRect rect;
@@ -206,7 +231,7 @@ void CMultiRobotDlg::OnPaint()
 		int x = (rect.Width() - cxIcon + 1) / 2;
 		int y = (rect.Height() - cyIcon + 1) / 2;
 
-		// »æÖÆÍ¼±ê
+		// ç»˜åˆ¶å›¾æ ‡
 		dc.DrawIcon(x, y, m_hIcon);
 	}
 	else
@@ -215,8 +240,8 @@ void CMultiRobotDlg::OnPaint()
 	}
 }
 
-//µ±ÓÃ»§ÍÏ¶¯×îĞ¡»¯´°¿ÚÊ±ÏµÍ³µ÷ÓÃ´Ëº¯ÊıÈ¡µÃ¹â±ê
-//ÏÔÊ¾¡£
+//å½“ç”¨æˆ·æ‹–åŠ¨æœ€å°åŒ–çª—å£æ—¶ç³»ç»Ÿè°ƒç”¨æ­¤å‡½æ•°å–å¾—å…‰æ ‡
+//æ˜¾ç¤ºã€‚
 HCURSOR CMultiRobotDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
@@ -226,63 +251,64 @@ HCURSOR CMultiRobotDlg::OnQueryDragIcon()
 
 
 
-/*----------------------------------------------------------------------
-						¶àÏß³Ìº¯Êı¶¨Òå
-*/
-
+/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+						å¤šçº¿ç¨‹å‡½æ•°å®šä¹‰
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+/*---------------------socketç›‘å¬çº¿ç¨‹-----------------------*/
 DWORD WINAPI ListenAcceptThreadFun(LPVOID p)
 {
-	//ÓÃÓÚ¶àÏß³Ì ¼àÌıÏß³Ì
+	//ç”¨äºå¤šçº¿ç¨‹ ç›‘å¬çº¿ç¨‹
 	vector<HANDLE> hUpdataRobotThread;
 	vector<DWORD> UpdataRobotThreadID;
-	//¼àÌı
-	if (theApp.robotServer.Listen(ROBOT_MAXCONNECT_NUM) == SOCKET_ERROR)//¼àÌı
+	//ç›‘å¬
+	if (theApp.robotServer.Listen(ROBOT_MAXCONNECT_NUM) == SOCKET_ERROR)//ç›‘å¬
 	{
-		AfxMessageBox(_T("·şÎñ¼àÌı´íÎó"));
+		AfxMessageBox(_T("æœåŠ¡ç›‘å¬é”™è¯¯"));
 		return -1;
 	}
 	
-	while (true)
+	while (theApp.ThreadOn)
 	{
 		int acptret = theApp.robotServer.Accept();
 
-		//½ÓÊÕĞÂÓÃ»§
+		//æ¥æ”¶æ–°ç”¨æˆ·
 		if (acptret == INVALID_SOCKET)
 		{
 			//printf("accept error\n");
-			continue; //¼ÌĞøµÈ´ıÏÂÒ»´ÎÁ¬½Ó
+			continue; //ç»§ç»­ç­‰å¾…ä¸‹ä¸€æ¬¡è¿æ¥
 		}
 		else
 		{
-			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//Ëø¹Ò
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//é”æŒ‚
 			HANDLE h1; DWORD id1;
 			uint8_t therobotid = theApp.robotServer.robotlist.back().robotID;
 			h1 = CreateThread(NULL, 0, updataRobotStatusThreadFun, &therobotid, 0, &id1);
 			hUpdataRobotThread.push_back(h1);
 			UpdataRobotThreadID.push_back(id1);
-			//½âËø
+			//è§£é”
 			ReleaseMutex(theApp.robotServer.hMutex);
 		}
 	}
+	return 0;
 
 
 }
 
-
-//Ë¢ĞÂ»úÆ÷ÈË×´Ì¬ Èç¹ûµôÏßÖ±½Ó´ÓrobotServer.robotlistÖĞpopµô£¬²¢ÇÒ¹Ø±ÕÏß³Ì
+/*---------------------socketå­çº¿ç¨‹-----------------------*/
+//åˆ·æ–°æœºå™¨äººçŠ¶æ€ å¦‚æœæ‰çº¿ç›´æ¥ä»robotServer.robotlistä¸­popæ‰ï¼Œå¹¶ä¸”å…³é—­çº¿ç¨‹
 DWORD WINAPI updataRobotStatusThreadFun(LPVOID p)
 {
 	uint8_t robotid = *(uint8_t*)p;
 	int robotindex = theApp.robotServer.findID(robotid);
 
-	//ÅĞ¶ÏÍøÂçÁ¬½Ó ¶Ï¿ªÔòÌø³öÑ­»·
-	while (theApp.robotServer.robotlist[robotindex].connectStatus>0)
+	//åˆ¤æ–­ç½‘ç»œè¿æ¥ æ–­å¼€åˆ™è·³å‡ºå¾ªç¯
+	while (theApp.robotServer.robotlist[robotindex].connectStatus>0&& theApp.ThreadOn)
 	{
-		//updata µçÑ¹Öµ
-		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//Ëø¹Ò
+		//updata ç”µå‹å€¼
+		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//é”æŒ‚
 		robotindex = theApp.robotServer.findID(robotid);
 		theApp.robotServer.robotlist[robotindex].Voltage = theApp.robotServer.robotlist[robotindex].getVoltage();
-		//½âËø
+		//è§£é”
 		ReleaseMutex(theApp.robotServer.hMutex);
 
 		
@@ -290,35 +316,116 @@ DWORD WINAPI updataRobotStatusThreadFun(LPVOID p)
 		Sleep(1000);
 	}
 	
-	//É¾³ı¸ÃidµÄ½ø³Ì ´ÓrobotServer.robotlistÖĞpopµô
-	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//Ëø¹Ò
+	//åˆ é™¤è¯¥idçš„è¿›ç¨‹ ä»robotServer.robotlistä¸­popæ‰
+	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//é”æŒ‚
 	robotindex = theApp.robotServer.findID(robotid);
 	vector<robot>::iterator it = theApp.robotServer.robotlist.begin() + robotindex;
 	theApp.robotServer.robotlist.erase(it);
-	//½âËø
+	//è§£é”
 	ReleaseMutex(theApp.robotServer.hMutex);
+	return 0;
+}
+
+/*--------------------IPCè§†è§‰å¤„ç†å®šä½çº¿ç¨‹-----------------------*/
+DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
+{
+
+	//è¯»IPCï¼Œåˆ†åˆ«ä¸ºæ¯ä¸ªIPCå»ºç«‹çº¿ç¨‹
+	WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//é”æŒ‚
+	for (int i = 0; i < theApp.visionLSys.getIPCNum(); i++)
+	{
+		DWORD id1;
+		HANDLE h1 = CreateThread(NULL, 0, IPCvisionLocationSonThreadFun, (LPVOID)i, 0, &id1);
+		Mat img=Mat(720,1280, CV_8UC3);
+		theApp.IPCshowImg.push_back(img);
+	}
+	ReleaseMutex(theApp.visionLSys.hMutex);//è§£é”
+
+	while (theApp.ThreadOn)
+	{
+		//æ•´åˆobj
+
+
+		//æ˜¾ç¤ºç›‘æ§
+		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//é”æŒ‚
+		if (theApp.seleteimshow = -1&& theApp.IPCshowImg.size()>0)
+		{
+			for (size_t j = 0; j < theApp.visionLSys.getIPCNum(); j++)
+			{
+				string istr = std::to_string(j);
+				imshow("outimg"+istr, theApp.IPCshowImg[j]);
+			}
+		}
+		ReleaseMutex(theApp.visionLSys.hMutex);//è§£é”
+
+		int key = waitKey(30);
+
+
+	}
+
+	return 0;
+}
+
+/*--------------------IPCå­å¤„ç†çº¿ç¨‹-----------------------*/
+DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
+{
+
+	int index = (int)p;
+	if (theApp.visionLSys.IPC[index].Open() == false)
+	{
+		CString err;
+		err.Format(_T("ç¬¬%då·IPæ‘„åƒå¤´æ— æ³•æ‰“å¼€"), index);
+		AfxMessageBox(err);
+		return 0;
+	}
+	while (theApp.ThreadOn)
+	{
+		//å–å›¾ç‰‡
+		Mat img, outimg;
+		theApp.visionLSys.IPC[index].cap >> img;
+		resize(img, img, Size(1280, 720));
+		//location
+		vector<IPCobj> objection;
+		objection = theApp.visionLSys.location(img, 0, outimg);
+
+		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//é”æŒ‚
+		//åˆ·æ–°ç›‘è§†å›¾
+		theApp.IPCshowImg[index] = outimg.clone();
+		//åˆ·æ–°obj
+
+
+		ReleaseMutex(theApp.visionLSys.hMutex);//è§£é”
+
+
+		Sleep(1);
+
+	}
 	return 0;
 }
 
 
 
 
+/*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+								MFCå‡½æ•°
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+
 void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 {
-	// TODO: ÔÚ´ËÌí¼ÓÏûÏ¢´¦Àí³ÌĞò´úÂëºÍ/»òµ÷ÓÃÄ¬ÈÏÖµ
+	// TODO: åœ¨æ­¤æ·»åŠ æ¶ˆæ¯å¤„ç†ç¨‹åºä»£ç å’Œ/æˆ–è°ƒç”¨é»˜è®¤å€¼
 	
-	//Ëø¹Ò
+	//é”æŒ‚
 	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-	//Ë¢ĞÂ»úÆ÷ÈËÁĞ±í
+	//åˆ·æ–°æœºå™¨äººåˆ—è¡¨
 	updataRobotListDisplay();
 	
-	//Ë¢ĞÂÖ¸¶¨»úÆ÷ÈËµÄĞÅÏ¢£ºµçÑ¹ IMU 
+	//åˆ·æ–°æŒ‡å®šæœºå™¨äººçš„ä¿¡æ¯ï¼šç”µå‹ IMU 
 	int index = m_RobotList.GetCurSel();
 	if (index >= 0)
 	{
-		//Ë¢ĞÂµçÑ¹
+		//åˆ·æ–°ç”µå‹
 		m_voltage = theApp.robotServer.robotlist[index].Voltage;
-		//Ë¢ĞÂIMU
+		//åˆ·æ–°IMU
 		imu_msg imudata;
 		imudata = theApp.robotServer.robotlist[index].getIMU();
 		m_angular_velocity_x = zfun::numFormat(imudata.angular_velocity_x,2);
@@ -327,13 +434,13 @@ void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 		m_linear_acceleration_x = zfun::numFormat(imudata.linear_acceleration_x,2);
 		m_linear_acceleration_y = zfun::numFormat(imudata.linear_acceleration_y,2);
 		m_linear_acceleration_z = zfun::numFormat(imudata.linear_acceleration_z,2);
-		//ËÄÔª×é×ªRPY
+		//å››å…ƒç»„è½¬RPY
 		Eigen::Vector3d rpy;
 		rpy = zfun::Quaterniond2Euler(imudata.orientation_x, imudata.orientation_y, imudata.orientation_z, imudata.orientation_w);
 		m_roll = zfun::numFormat(rpy[0],3);
 		m_pitch = zfun::numFormat(rpy[1], 3);
 		m_yaw = zfun::numFormat(rpy[2], 3);
-		//Ë¢ĞÂÔË¶¯¿ØÖÆÊ¹ÄÜ¿Ø¼ş
+		//åˆ·æ–°è¿åŠ¨æ§åˆ¶ä½¿èƒ½æ§ä»¶
 		if (theApp.robotServer.robotlist[index].getTorque() == 1)
 		{
 			m_moveEnable.SetCheck(true);
@@ -344,7 +451,7 @@ void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 		}
 	}
 
-	//½âËø
+	//è§£é”
 	ReleaseMutex(theApp.robotServer.hMutex);
 
 	UpdateData(false);
@@ -353,12 +460,12 @@ void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 }
 
 
-//Listbox Óë robotlist ½øĞĞ¶Ô±È¸üĞÂ
+//Listbox ä¸ robotlist è¿›è¡Œå¯¹æ¯”æ›´æ–°
 void CMultiRobotDlg::updataRobotListDisplay()
 {
-	//Ë¢ĞÂrobotlistÁĞ±í
-	int flagone=1; //1ÊÇÒ»Ñù 0ÊÇ²»Ò»Ñù
-	//ÅĞ¶ÏÊÇ·ñÒ»ÖÂ
+	//åˆ·æ–°robotliståˆ—è¡¨
+	int flagone=1; //1æ˜¯ä¸€æ · 0æ˜¯ä¸ä¸€æ ·
+	//åˆ¤æ–­æ˜¯å¦ä¸€è‡´
 	if (theApp.robotServer.getRobotListNum() == m_RobotList.GetCount())
 	{
 		for (size_t i = 0; i < m_RobotList.GetCount(); i++)
@@ -395,22 +502,22 @@ void CMultiRobotDlg::updataRobotListDisplay()
 
 
 
-//¶Ô¸Ã»úÆ÷ÈË½øĞĞ°´¼ü²Ù×÷
+//å¯¹è¯¥æœºå™¨äººè¿›è¡ŒæŒ‰é”®æ“ä½œ
 BOOL CMultiRobotDlg::PreTranslateMessage(MSG* pMsg)
 {
-	// TODO: ÔÚ´ËÌí¼Ó×¨ÓÃ´úÂëºÍ/»òµ÷ÓÃ»ùÀà
+	// TODO: åœ¨æ­¤æ·»åŠ ä¸“ç”¨ä»£ç å’Œ/æˆ–è°ƒç”¨åŸºç±»
 	
 	if (pMsg->message == WM_KEYDOWN)
 	{
 		if (keyflag == 0)
 		{
-			////²é¿´µ±Ç°Ñ¡Ôñ»úÆ÷ÈË¡£
+			////æŸ¥çœ‹å½“å‰é€‰æ‹©æœºå™¨äººã€‚
 			int index= m_RobotList.GetCurSel();
 			if (index < 0)
 			{
 				return CDialogEx::PreTranslateMessage(pMsg);
 			}
-			//¼ì²éWSADÊ±ÓÃÊ²Ã´²ÎÊıÀ´ÅÜ
+			//æ£€æŸ¥WSADæ—¶ç”¨ä»€ä¹ˆå‚æ•°æ¥è·‘
 			float ilin, iang;
 			if (m_wsadFlag.GetCheck() == BST_CHECKED)
 			{
@@ -425,29 +532,29 @@ BOOL CMultiRobotDlg::PreTranslateMessage(MSG* pMsg)
 
 			switch (pMsg->wParam)
 			{
-			case 'W'://Ç°½ø
+			case 'W'://å‰è¿›
 				
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//Ëø¹Ò
+				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//é”æŒ‚
 				theApp.robotServer.robotlist[index].move(ilin, 0);
-				//½âËø
+				//è§£é”
 				ReleaseMutex(theApp.robotServer.hMutex);	
 				break;
-			case 'S'://ºóÍË
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//Ëø¹Ò
+			case 'S'://åé€€
+				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//é”æŒ‚
 				theApp.robotServer.robotlist[index].move(-ilin, 0);
-				//½âËø
+				//è§£é”
 				ReleaseMutex(theApp.robotServer.hMutex);
 				break;
-			case 'A'://×ó
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//Ëø¹Ò
+			case 'A'://å·¦
+				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//é”æŒ‚
 				theApp.robotServer.robotlist[index].move(0, iang);
-				//½âËø
+				//è§£é”
 				ReleaseMutex(theApp.robotServer.hMutex);
 				break;
-			case 'D'://ÓÒ
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//Ëø¹Ò
+			case 'D'://å³
+				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//é”æŒ‚
 				theApp.robotServer.robotlist[index].move(0, -iang);
-				//½âËø
+				//è§£é”
 				ReleaseMutex(theApp.robotServer.hMutex);
 				break;
 			default:
@@ -459,16 +566,16 @@ BOOL CMultiRobotDlg::PreTranslateMessage(MSG* pMsg)
 	}
 	else if (pMsg->message == WM_KEYUP)
 	{
-		////²é¿´µ±Ç°Ñ¡Ôñ»úÆ÷ÈË¡£
+		////æŸ¥çœ‹å½“å‰é€‰æ‹©æœºå™¨äººã€‚
 		int index = m_RobotList.GetCurSel();
 		if (index < 0)
 		{
 			return CDialogEx::PreTranslateMessage(pMsg);
 		}
-		//Ëø¹Ò
+		//é”æŒ‚
 		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
 		theApp.robotServer.robotlist[index].move(0, 0);
-		//½âËø
+		//è§£é”
 		ReleaseMutex(theApp.robotServer.hMutex);
 
 		keyflag = 0;
@@ -479,28 +586,19 @@ BOOL CMultiRobotDlg::PreTranslateMessage(MSG* pMsg)
 }
 
 
-//void CMultiRobotDlg::OnEnChangeEdit2()
-//{
-//	// TODO:  Èç¹û¸Ã¿Ø¼şÊÇ RICHEDIT ¿Ø¼ş£¬Ëü½«²»
-//	// ·¢ËÍ´ËÍ¨Öª£¬³ı·ÇÖØĞ´ CDialogEx::OnInitDialog()
-//	// º¯Êı²¢µ÷ÓÃ CRichEditCtrl().SetEventMask()£¬
-//	// Í¬Ê±½« ENM_CHANGE ±êÖ¾¡°»ò¡±ÔËËãµ½ÑÚÂëÖĞ¡£
-//
-//	// TODO:  ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
-//}
 
-//checkbox  Ê¹ÄÜµç»ú¿ª¹Ø
+//checkbox  ä½¿èƒ½ç”µæœºå¼€å…³
 void CMultiRobotDlg::OnBnClickedCheck1()
 {
-	// TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	// TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 
-	//²é¿´µ±Ç°Ñ¡Ôñ»úÆ÷ÈË¡£
+	//æŸ¥çœ‹å½“å‰é€‰æ‹©æœºå™¨äººã€‚
 	int index = m_RobotList.GetCurSel();
 	if (index < 0)
 	{
 		return;
 	}
-	//Ëø¹Ò
+	//é”æŒ‚
 	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
 	if (m_moveEnable.GetCheck() == BST_CHECKED)//enabel
 	{
@@ -510,7 +608,7 @@ void CMultiRobotDlg::OnBnClickedCheck1()
 	{
 		theApp.robotServer.robotlist[index].setTorque(0);
 	}
-	//½âËø
+	//è§£é”
 	ReleaseMutex(theApp.robotServer.hMutex);
 }
 
@@ -519,7 +617,7 @@ void CMultiRobotDlg::OnBnClickedCheck1()
 void CMultiRobotDlg::OnNMCustomdrawSlider1(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
-	// TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	// TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	m_movelin_display = m_movelin.GetPos();
 	UpdateData(false);
 	*pResult = 0;
@@ -530,16 +628,16 @@ void CMultiRobotDlg::OnNMCustomdrawSlider1(NMHDR *pNMHDR, LRESULT *pResult)
 void CMultiRobotDlg::OnNMCustomdrawSlider2(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
-	// TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	// TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	m_moveang_display = m_moveang.GetPos();
 	UpdateData(false);
 	*pResult = 0;
 }
 
-//¿ªÊ¼ÔË¶¯
+//å¼€å§‹è¿åŠ¨
 void CMultiRobotDlg::OnBnClickedButton1()
 {
-	// TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	// TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	int index = m_RobotList.GetCurSel();
 	if (index < 0)
 	{
@@ -548,27 +646,72 @@ void CMultiRobotDlg::OnBnClickedButton1()
 	float ilin, iang;
 	ilin = (float)m_movelin.GetPos() / 100.0;
 	iang = (float)m_moveang.GetPos()/100;
-	//Ëø¹Ò
+	//é”æŒ‚
 	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
 	theApp.robotServer.robotlist[index].move(ilin, iang);
-	//½âËø
+	//è§£é”
 	ReleaseMutex(theApp.robotServer.hMutex);
 }
 
 
-//Í£Ö¹ÔË¶¯
+//åœæ­¢è¿åŠ¨
 void CMultiRobotDlg::OnBnClickedButton2()
 {
-	// TODO: ÔÚ´ËÌí¼Ó¿Ø¼şÍ¨Öª´¦Àí³ÌĞò´úÂë
+	// TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
 	int index = m_RobotList.GetCurSel();
 	if (index < 0)
 	{
 		return;
 	}
 
-	//Ëø¹Ò
+	//é”æŒ‚
 	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
 	theApp.robotServer.robotlist[index].move(0, 0);
-	//½âËø
+	//è§£é”
 	ReleaseMutex(theApp.robotServer.hMutex);
+}
+
+
+void CMultiRobotDlg::On32775()
+{
+	// TODO: åœ¨æ­¤æ·»åŠ å‘½ä»¤å¤„ç†ç¨‹åºä»£ç 
+
+	directionDlg  Dlg;
+	Dlg.DoModal();
+}
+
+//é€‰IPC
+void CMultiRobotDlg::OnLbnSelchangeList1()
+{
+	// TODO: åœ¨æ­¤æ·»åŠ æ§ä»¶é€šçŸ¥å¤„ç†ç¨‹åºä»£ç 
+	//æŸ¥çœ‹é€‰å®šçš„IPCç¼–å·
+	int index = m_IPClist.GetCurSel();
+
+	//æ˜¾ç¤ºrtsp
+	m_rtsp=theApp.visionLSys.IPC[index].rtsp.c_str();
+	UpdateData(false);
+}
+
+//ç¨‹åºå…³é—­é€€å‡ºã€‚ä¸»è¦ç”¨äºæ¸…ç†å†…å­˜é‡Šæ”¾ã€‚
+void CMultiRobotDlg::OnDestroy()
+{
+	CDialogEx::OnDestroy();
+
+	// TODO: åœ¨æ­¤å¤„æ·»åŠ æ¶ˆæ¯å¤„ç†ç¨‹åºä»£ç 
+	//å®‰å…¨é€€å‡ºçº¿ç¨‹
+	WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//é”æŒ‚
+	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//é”æŒ‚
+	theApp.ThreadOn = 0;
+	ReleaseMutex(theApp.robotServer.hMutex);//è§£é”
+	ReleaseMutex(theApp.visionLSys.hMutex);//è§£é” 
+	//ç­‰å¾…å‡ å¤§çº¿ç¨‹ç»“æŸ
+	//WaitForMultipleObjects(1, &theApp.robotServer.hListenThread, true, INFINITE);
+	//WaitForMultipleObjects(1, &theApp.visionLSys.hThread, true, INFINITE);
+
+	//é‡Šæ”¾å†…å­˜
+	/*for (int i = 0; i <theApp.visionLSys.getIPCNum(); i++)
+	{
+		theApp.visionLSys.IPC[i].cap.release();
+	}*/
+	
 }
