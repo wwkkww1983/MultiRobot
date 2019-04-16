@@ -78,10 +78,18 @@
     <None Include="res\My.rc2">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="config.json">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\多机器人协作中央控制.ico">
       <Filter>资源文件</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="IPCxml.xml">
+      <Filter>资源文件</Filter>
+    </Xml>
   </ItemGroup>
 </Project>

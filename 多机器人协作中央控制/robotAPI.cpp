@@ -2,10 +2,11 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.2
+版  本：beta 0.3
 更  新：
-	1、添加了：socket监听套接字的超时设置
-	2、添加了：得到本地服务器IP地址的接口
+1、增加初始化IMU函数
+2、robot类增加机器人的线速度和角速度变量。并且实时更新状态。
+3、重新确定了move参数的单位以及实际意义。
 */
 
 
@@ -70,8 +71,8 @@ uint8_t robot::getID(void)
 /*******************************************************************************
 * 机器人移动命令
 说明：给定机器人移动速度与转弯角度来控制机器人的移动，
-输入	lin_val		移动速度，0-0.2为正常值，这个参数对基于两个电机转速
-		ang_val		这个参数会基于两个电机一个反相值一般为0-1.8
+输入	lin_val		线速度大小 单位m/s
+		ang_val		角速度大小 单位弧度/s
 输出	1/-1		1正确  -1错误值
 *******************************************************************************/
 INT8 robot::move(float lin_val, float ang_val)
@@ -97,6 +98,8 @@ INT8 robot::move(float lin_val, float ang_val)
 	}
 	else
 	{
+		v = lin_val;
+		w = ang_val;
 		return 1;
 	}
 
@@ -331,6 +334,18 @@ uint8_t robot::getTorque()
 	}
 
 	 
+
+}
+
+void robot::initIMU(void)
+{
+	char outbuf[SEND_LENGHT] = { 0xD8,0x00,0x00,0x11,0xC7 };
+	int sendret = send(robotsock, outbuf, sizeof(outbuf), 0);
+
+	if (sendret <= 0)
+	{
+		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+	}
 
 }
 

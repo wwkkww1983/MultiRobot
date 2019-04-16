@@ -4,7 +4,15 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.1
+版  本：beta 0.2
+更  改：
+	1、添加了缓存队列模块类
+	2、添加了整合obj的算法
+	3、添加了部分画坐标系的函数（张猛）
+	4、添加了一个在OBJ群中找机器人ID的函数
+	5、添加定位延时信息存储
+	6、添加了线速度变量
+	7、添加了算法标志位变量
 */
 
 #include "stdafx.h"
@@ -13,6 +21,35 @@ IPClocation
 #include "Eigen\Eigen"
 
 using namespace std;
+
+/*-----------------------------------------------------------------------------
+					CasheQueue函数接口定义
+							class
+------------------------------------------------------------------------------*/
+void CasheQueue::init(int len)
+{
+	for (size_t i = 0; i < len; i++)
+	{
+		Casheq.push_back(0);
+	}
+}
+void CasheQueue::push(float input)
+{
+	Casheq.push_back(input);
+	vector<float>::iterator iter= Casheq.begin();
+	Casheq.erase(iter);
+}
+int CasheQueue::size()
+{
+	return Casheq.size();
+}
+
+float& CasheQueue::operator[](int index)
+{
+	return this->Casheq[index];
+}
+
+
 
 
 IPCobj::IPCobj()
@@ -977,4 +1014,137 @@ bool IPClocation::AddIPC(std::vector<Mat> img, cv::Size board_size, cv::Size squ
 	UpdateXMLfile();
 
 	return true;
+}
+
+std::vector<IPCobj> IPClocation::calculateAllObjection(std::vector<std::vector<IPCobj>> eobj)
+{
+	//检测输入参数合理性（ex：同一个IPC下看到了多个ID相同的机器人）
+
+	//找robot，并且整合
+	vector<uint8_t> robotID;//找到了那些robotID
+	vector<vector<Vec2i>> fIPCindex;//这些robotID都出现在哪个IPC里,并且是在这个IPC里的第几个序号
+
+	//遍历eobj
+	for (size_t i = 0; i < eobj.size(); i++)
+	{
+		for (size_t j = 0; j < eobj[i].size(); j++)
+		{
+			//判断这个IPCOBJ是不是robot
+			if (eobj[i][j].cls == IPCobj::Robot)
+			{
+				//查看这个robotid是否有入栈过
+				int samIDindex = zfun::findVecterElm(robotID, eobj[i][j].ID);	
+				if (samIDindex == -1)//否
+				{
+					robotID.push_back(eobj[i][j].ID);
+					Vec2i x; x[0] = i; x[1] = j;
+					vector<Vec2i> newindex; newindex.push_back(x);//第i个IPC出现了新robotID
+					fIPCindex.push_back(newindex);
+				}
+				else
+				{
+					Vec2i x; x[0] = i; x[1] = j;
+					fIPCindex[samIDindex].push_back(x);
+				}
+			}
+		}
+	}
+
+	//针对机器人开始整合新的IPCobj
+	vector<IPCobj> retobj;
+
+	if (Algorithm == 0)//确认算法
+	{
+		for (size_t i = 0; i < robotID.size(); i++)
+		{
+			IPCobj newobj;
+			newobj.dimension = 3;
+			newobj.ID = robotID[i];
+			newobj.cls = IPCobj::Robot;
+			newobj.coordinate3D[0] = 0; newobj.coordinate3D[1] = 0; newobj.coordinate3D[2] = 0;
+			newobj.direction3D[0] = 0; newobj.direction3D[1] = 0; newobj.direction3D[2] = 0;
+			//遍历该robotID所有的IPC,并且平均坐标
+			for (size_t j = 0; j < fIPCindex[i].size(); j++)
+			{
+				
+				newobj.coordinate3D[0] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].coordinate3D[0];
+				newobj.coordinate3D[1] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].coordinate3D[1];
+				newobj.coordinate3D[2] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].coordinate3D[2];
+				newobj.direction3D[0] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].direction3D[0];
+				newobj.direction3D[1] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].direction3D[1];
+				newobj.direction3D[2] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].direction3D[2];
+			}
+			newobj.coordinate3D[0] /= fIPCindex[i].size();
+			newobj.coordinate3D[1] /= fIPCindex[i].size();
+			newobj.coordinate3D[2] /= fIPCindex[i].size();
+			//push
+			retobj.push_back(newobj);
+		}
+	}
+	return retobj;
+
+}
+
+
+bool IPClocation::cmp(Point2d &s1, Point2d &s2)
+{
+	return s1.y > s2.y;
+}
+
+//画表示物体方向的箭头
+void IPClocation::drawArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
+	cv::Scalar color, int thickness, int lineType)
+{
+	const double PI = 3.1415926;
+	Point2d arrow;
+
+	//计算 θ 角
+	double angle = atan2((double)(oPoint.y - pDirection.y), (double)(oPoint.x - pDirection.x));
+
+	pLocation.x = pLocation.x - sqrt(2) * 4 * cos(angle);
+	pLocation.y = pLocation.y - sqrt(2) * 4 * sin(angle);
+	//计算箭角边的另一端的端点位置
+	arrow.x = pLocation.x + len * cos(angle + PI * alpha / 180);
+	arrow.y = pLocation.y + len * sin(angle + PI * alpha / 180);
+	line(img, pLocation, arrow, color, thickness, lineType);
+	arrow.x = pLocation.x + len * cos(angle - PI * alpha / 180);
+	arrow.y = pLocation.y + len * sin(angle - PI * alpha / 180);
+	line(img, pLocation, arrow, color, thickness, lineType);
+}
+
+//画坐标轴的箭头
+void IPClocation::drawCoorArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
+	cv::Scalar color, int thickness , int lineType )
+{
+	const double PI = 3.1415926;
+	Point2d arrow;
+
+	//计算 θ 角
+	double angle = atan2((double)(oPoint.y - pDirection.y), (double)(oPoint.x - pDirection.x));
+
+	//计算箭角边的另一端的端点位置
+	arrow.x = pLocation.x + len * cos(angle + PI * alpha / 180);
+	arrow.y = pLocation.y + len * sin(angle + PI * alpha / 180);
+	line(img, pLocation, arrow, color, thickness, lineType);
+	arrow.x = pLocation.x + len * cos(angle - PI * alpha / 180);
+	arrow.y = pLocation.y + len * sin(angle - PI * alpha / 180);
+	line(img, pLocation, arrow, color, thickness, lineType);
+}
+
+
+int IPClocation::findVecterElm(vector<IPCobj> vec, uint8_t robotidid)
+{
+	int ret;
+	std::vector<IPCobj>::iterator iter;
+
+	for (iter = vec.begin(); iter < vec.end(); iter++)
+	{
+		if (iter->ID == robotidid)
+		{
+			ret = &*iter - &vec[0];
+			return ret;
+		}
+	}
+	return -1;
+
 }

@@ -69,6 +69,8 @@ CMultiRobotDlg::CMultiRobotDlg(CWnd* pParent /*=NULL*/)
 	, m_movelin_display(0)
 	, m_moveang_display(0)
 	, m_rtsp(_T(""))
+	, m_direction(0)
+	, m_delaytime(0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -100,6 +102,8 @@ void CMultiRobotDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT13, m_disIPaddr);
 	DDX_Control(pDX, IDC_LIST1, m_IPClist);
 	DDX_Text(pDX, IDC_EDIT14, m_rtsp);
+	DDX_Text(pDX, IDC_EDIT15, m_direction);
+	DDX_Text(pDX, IDC_EDIT16, m_delaytime);
 }
 
 BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
@@ -116,6 +120,8 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_COMMAND(ID_32775, &CMultiRobotDlg::On32775)
 	ON_LBN_SELCHANGE(IDC_LIST1, &CMultiRobotDlg::OnLbnSelchangeList1)
 	ON_WM_DESTROY()
+	ON_BN_CLICKED(IDC_BUTTON3, &CMultiRobotDlg::OnBnClickedButton3)
+	ON_COMMAND(ID_32777, &CMultiRobotDlg::On32777)
 END_MESSAGE_MAP()
 
 
@@ -154,8 +160,12 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	//***************************************** TODO: 在此添加额外的初始化代码
 	m_Menu.LoadMenu(IDR_MENU1);//初始化菜单
 	SetMenu(&m_Menu);
+	//读取json 设置文件
+	theApp.config.open("config.json", cv::FileStorage::READ);
 	//zzq测试代码
-	int ipport = 6000;
+	int ipport;
+	theApp.config["IPport"]>> ipport;
+
 	theApp.robotServer.init(ipport);
 	if (theApp.robotServer.is_Open() < 0)
 	{
@@ -192,8 +202,8 @@ BOOL CMultiRobotDlg::OnInitDialog()
 		IPCname.Format(_T("IPC:%d"), i);
 		m_IPClist.AddString(IPCname);
 	}
-	
 
+	
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -338,13 +348,23 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		HANDLE h1 = CreateThread(NULL, 0, IPCvisionLocationSonThreadFun, (LPVOID)i, 0, &id1);
 		Mat img=Mat(720,1280, CV_8UC3);
 		theApp.IPCshowImg.push_back(img);
+		vector<IPCobj> newereyobj;
+		theApp.everyIPCobj.push_back(newereyobj);
 	}
 	ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
 	while (theApp.ThreadOn)
 	{
 		//整合obj
+		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+		vector<vector<IPCobj>> inputobj= theApp.everyIPCobj;
+		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
+		vector<IPCobj> casheobj = theApp.visionLSys.calculateAllObjection(inputobj);
+
+		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+		theApp.obj = casheobj;
+		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
 		//显示监控
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
@@ -392,7 +412,7 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
 		//刷新监视图
 		theApp.IPCshowImg[index] = outimg.clone();
 		//刷新obj
-
+		theApp.everyIPCobj[index] = objection;
 
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
@@ -437,9 +457,11 @@ void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 		//四元组转RPY
 		Eigen::Vector3d rpy;
 		rpy = zfun::Quaterniond2Euler(imudata.orientation_x, imudata.orientation_y, imudata.orientation_z, imudata.orientation_w);
-		m_roll = zfun::numFormat(rpy[0],3);
-		m_pitch = zfun::numFormat(rpy[1], 3);
-		m_yaw = zfun::numFormat(rpy[2], 3);
+		m_roll = zfun::numFormat(rpy[0] * 180 / 3.14159, 1);
+		m_pitch = zfun::numFormat(rpy[1] * 180 / 3.14159, 1);
+		m_yaw = zfun::numFormat(rpy[2] * 180 / 3.14159, 1);
+		m_direction = acos(imudata.orientation_w) * 2 * 180 / 3.14159;
+
 		//刷新运动控制使能控件
 		if (theApp.robotServer.robotlist[index].getTorque() == 1)
 		{
@@ -471,7 +493,7 @@ void CMultiRobotDlg::updataRobotListDisplay()
 		for (size_t i = 0; i < m_RobotList.GetCount(); i++)
 		{
 			CString robotname;
-			robotname.Format(_T("%x"), theApp.robotServer.robotlist[i].robotID);
+			robotname.Format(_T("%d"), theApp.robotServer.robotlist[i].robotID);
 			CString m_RobotListstr;
 			m_RobotList.GetText(i, m_RobotListstr);
 			if (robotname != m_RobotListstr) flagone = 0;
@@ -489,7 +511,7 @@ void CMultiRobotDlg::updataRobotListDisplay()
 		for (size_t i = 0; i < theApp.robotServer.getRobotListNum(); i++)
 		{
 			CString robotname;
-			robotname.Format(_T("%x"), theApp.robotServer.robotlist[i].robotID);
+			robotname.Format(_T("%d"), theApp.robotServer.robotlist[i].robotID);
 
 
 			m_RobotList.AddString(robotname);
@@ -618,7 +640,7 @@ void CMultiRobotDlg::OnNMCustomdrawSlider1(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
 	// TODO: 在此添加控件通知处理程序代码
-	m_movelin_display = m_movelin.GetPos();
+	m_movelin_display = (float)m_movelin.GetPos()/ 100.0;
 	UpdateData(false);
 	*pResult = 0;
 }
@@ -629,7 +651,7 @@ void CMultiRobotDlg::OnNMCustomdrawSlider2(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
 	// TODO: 在此添加控件通知处理程序代码
-	m_moveang_display = m_moveang.GetPos();
+	m_moveang_display = (float)m_moveang.GetPos()/ 100.0;
 	UpdateData(false);
 	*pResult = 0;
 }
@@ -714,4 +736,81 @@ void CMultiRobotDlg::OnDestroy()
 		theApp.visionLSys.IPC[i].cap.release();
 	}*/
 	
+}
+
+//初始化IMU
+void CMultiRobotDlg::OnBnClickedButton3()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	int index = m_RobotList.GetCurSel();
+	if (index < 0)
+	{
+		return;
+	}
+
+	//锁挂
+	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+	theApp.robotServer.robotlist[index].initIMU();
+	//解锁
+	ReleaseMutex(theApp.robotServer.hMutex);
+
+	//KillTimer(1);
+	//Sleep(1000);
+	//SetTimer(1, 500, NULL);
+
+}
+
+
+void CMultiRobotDlg::On32777()
+{
+	// TODO: 在此添加命令处理程序代码
+	//查看条件是否满足
+	if (theApp.obj.size() <= 0)
+	{
+		AfxMessageBox(_T("地图中没有物体"));
+		return;
+	}
+
+	if (theApp.robotServer.getRobotListNum()<=0)
+	{
+		AfxMessageBox(_T("没有机器人连接上服务器"));
+		return;
+	}
+
+	//查找第一个机器人是否在地图上
+	int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[0].robotID);
+	if (objindex==-1)
+	{
+		AfxMessageBox(_T("第一个机器人不在地图上"));
+		return;
+	}
+	//开始准备数据
+	Vec3d lastpoint = theApp.obj[objindex].coordinate3D;
+
+	theApp.robotServer.robotlist[0].move(0.2, 0);
+
+	double starttime = cv::getTickCount();//开始计时
+	WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+	double distance = zfun::distancePoint(lastpoint, theApp.obj[objindex].coordinate3D);
+	ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+	while (distance<0.008)
+	{
+		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+		lastpoint = theApp.obj[objindex].coordinate3D;
+		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+		Sleep(30);
+
+		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+		distance = zfun::distancePoint(lastpoint, theApp.obj[objindex].coordinate3D);
+		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+	}
+	double overtime = ((double)cv::getTickCount() - starttime) / cv::getTickFrequency();
+	theApp.robotServer.robotlist[0].move(0, 0);
+
+	theApp.visionLSys.delayTime = overtime;
+	m_delaytime = overtime;
+	UpdateData(false);
+	return ;
+
 }

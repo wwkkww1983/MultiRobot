@@ -2,10 +2,11 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.2
+版  本：beta 0.3
 更  新：
-1、添加了：socket监听套接字的超时设置
-2、添加了：得到本地服务器IP地址的接口
+	1、增加初始化IMU函数
+	2、robot类增加机器人的线速度和角速度变量。并且实时更新状态。
+	3、重新确定了move参数的单位以及实际意义。
 */
 
 
@@ -145,7 +146,8 @@ public:
 	SOCKET robotsock;
 	//
 	float Voltage;
-
+	float v = 0;//机器人线速度大小
+	float w = 0;//机器人角速度大小
 	/*  func   */
 	
 	INT8 move(float lin_val, float ang_val);
@@ -155,6 +157,7 @@ public:
 	float getIllumination(void);
 	uint8_t setLED(uint8_t lednum, uint8_t onoff);
 	uint8_t getTorque();
+	void initIMU(void);
 
 
 };

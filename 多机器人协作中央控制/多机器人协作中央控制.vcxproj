@@ -216,10 +216,14 @@
     <ResourceCompile Include="多机器人协作中央控制.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="config.json" />
     <None Include="res\My.rc2" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\多机器人协作中央控制.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="IPCxml.xml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -4,7 +4,15 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.1
+版  本：beta 0.2
+更  改：
+1、添加了缓存队列模块类
+2、添加了整合obj的算法
+3、添加了部分画坐标系的函数（张猛）
+4、添加了一个在OBJ群中找机器人ID的函数
+5、添加定位延时信息存储
+6、添加了线速度变量
+7、添加了算法标志位变量
 */
 
 #pragma once
@@ -21,6 +29,23 @@ IPClocation
 
 
 using namespace cv;
+
+class CasheQueue
+{
+public:
+	void init(int len);
+
+private:
+	std::vector<float>  Casheq;
+public:
+	void push(float input);
+	int size();
+
+	float& operator[](int index);
+
+
+};
+
 
 
 
@@ -113,6 +138,13 @@ public:
 	DWORD ThreadID;
 	//用于多线程 互斥锁
 	HANDLE hMutex;
+	//定位算法
+	int Algorithm=0;//0:AR姿态估计定位   1:多相机交点定位
+	//定位延时
+	double delayTime = 0;
+	//定位补偿估计的参数
+	CasheQueue pv;//线速度
+
 private:
 	
 	//用于建立世界坐标系的标定AR码ID和它的大小
@@ -140,6 +172,17 @@ private:
 	@param  corner：输入4个角点
 	*/
 	Point2i calculateCentre(std::vector<Point2f> corner);
+
+	/*
+	@brief:画定位坐标系用的函数
+	@author:张猛
+	*/
+	bool cmp(Point2d &s1, Point2d &s2);
+	void drawArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
+		cv::Scalar color, int thickness = 2, int lineType = 8);
+	void drawCoorArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
+		cv::Scalar color, int thickness = 2, int lineType = 8);
+
 
 public://输出函数接口
 
@@ -252,5 +295,18 @@ public://输出函数接口
 	*/
 	Mat getIPCARPimage(int index);
 
+	/*
+	*@brief：通过对各个IPC的location到的vector<IPCobj>物体集合，进行整合和数据处理，得到
+	真实的obj数据。该算法为多摄像头定位的核心算法。
+	@param eobj：每一个IPC经过相机定位或者AR定位得到的物体集合，eobj[IPCindex][物体序号]
+	@returns：整合好的真实的物体集合。
+	*/
+	std::vector<IPCobj> calculateAllObjection(std::vector<std::vector<IPCobj>> eobj);
+
+	/*
+	*@brief：找元素
+
+	*/
+	int findVecterElm(std::vector<IPCobj> vec, uint8_t robotidid);
 
 };

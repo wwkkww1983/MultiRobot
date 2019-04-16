@@ -66,13 +66,14 @@ public:
 	CSliderCtrl m_movelin;
 	// 移动的角度
 	CSliderCtrl m_moveang;
-	int m_movelin_display;
-//	CEdit m_moveang_display;
-//	afx_msg void OnTRBNThumbPosChangingSlider1(NMHDR *pNMHDR, LRESULT *pResult);
-	int m_moveang_display;
+	float m_movelin_display;
+	float m_moveang_display;
+
 	afx_msg void OnNMCustomdrawSlider1(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnNMCustomdrawSlider2(NMHDR *pNMHDR, LRESULT *pResult);
+	//开始运动按钮函数
 	afx_msg void OnBnClickedButton1();
+	//停止运动按钮函数
 	afx_msg void OnBnClickedButton2();
 	// 用于表示wsad按键是否使用滑动块的参数来跑
 	CButton m_wsadFlag;
@@ -85,6 +86,12 @@ public:
 	CString m_rtsp;
 	afx_msg void OnLbnSelchangeList1();
 	afx_msg void OnDestroy();
+	afx_msg void OnBnClickedButton3();
+	// 显示水平方向上的方向角度
+	float m_direction;
+	afx_msg void On32777();
+	// 延时时间
+	float m_delaytime;
 };
 
 //核心！！！！！
