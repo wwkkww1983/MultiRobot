@@ -89,11 +89,20 @@ public:
 	afx_msg void OnBnClickedButton3();
 	// 显示水平方向上的方向角度
 	float m_direction;
+
 	//测量定位延时的函数
 	afx_msg void On32777();
 	// 延时时间
 	float m_delaytime;
 	afx_msg void On32778();
+	// 调试输出。
+	CEdit m_printout;
+
+	//自定义函数，用于调试输出
+	void printd(CString cout);//输出字符串信息
+	void printd(string cout);//输出字符串信息
+
+
 };
 
 //核心！！！！！

@@ -104,6 +104,7 @@ void CMultiRobotDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT14, m_rtsp);
 	DDX_Text(pDX, IDC_EDIT15, m_direction);
 	DDX_Text(pDX, IDC_EDIT16, m_delaytime);
+	DDX_Control(pDX, IDC_EDIT17, m_printout);
 }
 
 BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
@@ -207,6 +208,9 @@ BOOL CMultiRobotDlg::OnInitDialog()
 		IPCname.Format(_T("IPC:%d"), i);
 		m_IPClist.AddString(IPCname);
 	}
+	//
+	printd("初始化成功");
+	printd("开始运作");
 
 	
 
@@ -828,7 +832,7 @@ void CMultiRobotDlg::OnBnClickedButton3()
 
 }
 
-
+//测量定位延时的函数
 void CMultiRobotDlg::On32777()
 {
 	// TODO: 在此添加命令处理程序代码
@@ -912,4 +916,24 @@ void CMultiRobotDlg::On32778()
 	{
 		AfxMessageBox(_T("标定失败。"));
 	}
+}
+
+//输出字符串信息
+void CMultiRobotDlg::printd(CString cout)
+{
+	cout += _T("\r\n"); // 回车换行
+	int lastLine = m_printout.LineIndex(m_printout.GetLineCount() - 1);
+	m_printout.SetSel(lastLine + 1, lastLine + 2, 0);
+	m_printout.ReplaceSel(cout); //在最后一行添加新的内容
+	UpdateData(false);
+}
+void CMultiRobotDlg::printd(string cout)
+{
+	CString str(cout.c_str());
+	
+	str += _T("\r\n"); // 回车换行
+	int lastLine = m_printout.LineIndex(m_printout.GetLineCount() - 1);
+	m_printout.SetSel(lastLine + 1, lastLine + 2, 0);
+	m_printout.ReplaceSel(str); //在最后一行添加新的内容
+	UpdateData(false);
 }
