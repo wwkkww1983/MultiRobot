@@ -122,6 +122,7 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_WM_DESTROY()
 	ON_BN_CLICKED(IDC_BUTTON3, &CMultiRobotDlg::OnBnClickedButton3)
 	ON_COMMAND(ID_32777, &CMultiRobotDlg::On32777)
+	ON_COMMAND(ID_32778, &CMultiRobotDlg::On32778)
 END_MESSAGE_MAP()
 
 
@@ -175,7 +176,11 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	//开启监听线程
 	theApp.robotServer.hListenThread = CreateThread(NULL, 0, ListenAcceptThreadFun, NULL, 0, &theApp.robotServer.ListenThreadID);
 	//设置对话框刷新时间
-	SetTimer(1, 500, NULL); m_voltage = 0;
+	SetTimer(1, 500, NULL);
+	//定时刷新机器的线速度角速度。
+	SetTimer(2, theApp.visionLSys.delayTime / CasheQueue_MAXSIZE, NULL);
+
+	m_voltage = 0;
 	//初始化运动控制滑动条
 	m_movelin.SetRange(-50, 50);
 	m_movelin.SetTicFreq(5);
@@ -339,6 +344,7 @@ DWORD WINAPI updataRobotStatusThreadFun(LPVOID p)
 /*--------------------IPC视觉处理定位线程-----------------------*/
 DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 {
+	vector<IPCobj> lastobj;
 
 	//读IPC，分别为每个IPC建立线程
 	WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
@@ -346,6 +352,8 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 	{
 		DWORD id1;
 		HANDLE h1 = CreateThread(NULL, 0, IPCvisionLocationSonThreadFun, (LPVOID)i, 0, &id1);
+		//为这个IPC创立互斥锁
+		theApp.visionLSys.IPC[i].hMutexcap= CreateMutex(NULL, FALSE, NULL);
 		Mat img=Mat(720,1280, CV_8UC3);
 		theApp.IPCshowImg.push_back(img);
 		vector<IPCobj> newereyobj;
@@ -362,10 +370,41 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 
 		vector<IPCobj> casheobj = theApp.visionLSys.calculateAllObjection(inputobj);
 
+		//运动补偿
+		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
+		for (size_t i = 0; i < theApp.robotServer.getRobotListNum(); i++)
+		{
+			//计算上一帧obj的角度
+			int objindex = theApp.visionLSys.findVecterElm(lastobj, theApp.robotServer.robotlist[i].robotID);
+			float lasttheta;
+			if (objindex >= 0)
+			{
+				if(lastobj[objindex].direction3D[0]>0)
+					lasttheta = atan(lastobj[objindex].direction3D[1] / lastobj[objindex].direction3D[0]);
+				if (lastobj[objindex].direction3D[0] < 0)
+				{
+					lasttheta = atan(lastobj[objindex].direction3D[1] / lastobj[objindex].direction3D[0])+3.14159;
+				}
+			}
+
+			Point2f dxy = theApp.robotServer.robotlist[i].pvw.displace(theApp.visionLSys.delayTime, lasttheta);
+			
+			objindex = theApp.visionLSys.findVecterElm(casheobj, theApp.robotServer.robotlist[i].robotID);
+			if (objindex >= 0)
+			{
+				casheobj[objindex].coordinate3D[0] += dxy.x;
+				casheobj[objindex].coordinate3D[1] += dxy.y;
+			}
+		}
+		ReleaseMutex(theApp.robotServer.hMutex);//解锁
+		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+		//刷新obj
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 		theApp.obj = casheobj;
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
-
+		lastobj = casheobj;
 		//显示监控
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 		if (theApp.seleteimshow = -1&& theApp.IPCshowImg.size()>0)
@@ -378,6 +417,10 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		}
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
+		//显示obj
+		Mat showobj;
+		showobj = theApp.visionLSys.paintObject(theApp.obj,Point(400,300),100);
+		imshow("showobj", showobj);
 		int key = waitKey(30);
 
 
@@ -402,7 +445,11 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
 	{
 		//取图片
 		Mat img, outimg;
+		//取图片是记得给这个cap流上锁。
+		WaitForSingleObject(theApp.visionLSys.IPC[index].hMutexcap, INFINITE);//锁挂
 		theApp.visionLSys.IPC[index].cap >> img;
+		ReleaseMutex(theApp.visionLSys.IPC[index].hMutexcap);//解锁
+
 		resize(img, img, Size(1280, 720));
 		//location
 		vector<IPCobj> objection;
@@ -433,50 +480,71 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
 void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
-	
-	//锁挂
-	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-	//刷新机器人列表
-	updataRobotListDisplay();
-	
-	//刷新指定机器人的信息：电压 IMU 
-	int index = m_RobotList.GetCurSel();
-	if (index >= 0)
+	switch (nIDEvent)
 	{
-		//刷新电压
-		m_voltage = theApp.robotServer.robotlist[index].Voltage;
-		//刷新IMU
-		imu_msg imudata;
-		imudata = theApp.robotServer.robotlist[index].getIMU();
-		m_angular_velocity_x = zfun::numFormat(imudata.angular_velocity_x,2);
-		m_angular_velocity_y = zfun::numFormat(imudata.angular_velocity_y,2);
-		m_angular_velocity_z = zfun::numFormat(imudata.angular_velocity_z,2);
-		m_linear_acceleration_x = zfun::numFormat(imudata.linear_acceleration_x,2);
-		m_linear_acceleration_y = zfun::numFormat(imudata.linear_acceleration_y,2);
-		m_linear_acceleration_z = zfun::numFormat(imudata.linear_acceleration_z,2);
-		//四元组转RPY
-		Eigen::Vector3d rpy;
-		rpy = zfun::Quaterniond2Euler(imudata.orientation_x, imudata.orientation_y, imudata.orientation_z, imudata.orientation_w);
-		m_roll = zfun::numFormat(rpy[0] * 180 / 3.14159, 1);
-		m_pitch = zfun::numFormat(rpy[1] * 180 / 3.14159, 1);
-		m_yaw = zfun::numFormat(rpy[2] * 180 / 3.14159, 1);
-		m_direction = acos(imudata.orientation_w) * 2 * 180 / 3.14159;
+	case 1://对话框刷新
+	{
+		//锁挂
+		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+		//刷新机器人列表
+		updataRobotListDisplay();
 
-		//刷新运动控制使能控件
-		if (theApp.robotServer.robotlist[index].getTorque() == 1)
+		//刷新指定机器人的信息：电压 IMU 
+		int index = m_RobotList.GetCurSel();
+		if (index >= 0)
 		{
-			m_moveEnable.SetCheck(true);
+			//刷新电压
+			m_voltage = theApp.robotServer.robotlist[index].Voltage;
+			//刷新IMU
+			imu_msg imudata;
+			imudata = theApp.robotServer.robotlist[index].getIMU();
+			m_angular_velocity_x = zfun::numFormat(imudata.angular_velocity_x, 2);
+			m_angular_velocity_y = zfun::numFormat(imudata.angular_velocity_y, 2);
+			m_angular_velocity_z = zfun::numFormat(imudata.angular_velocity_z, 2);
+			m_linear_acceleration_x = zfun::numFormat(imudata.linear_acceleration_x, 2);
+			m_linear_acceleration_y = zfun::numFormat(imudata.linear_acceleration_y, 2);
+			m_linear_acceleration_z = zfun::numFormat(imudata.linear_acceleration_z, 2);
+			//四元组转RPY
+			Eigen::Vector3d rpy;
+			rpy = zfun::Quaterniond2Euler(imudata.orientation_x, imudata.orientation_y, imudata.orientation_z, imudata.orientation_w);
+			m_roll = zfun::numFormat(rpy[0] * 180 / 3.14159, 1);
+			m_pitch = zfun::numFormat(rpy[1] * 180 / 3.14159, 1);
+			m_yaw = zfun::numFormat(rpy[2] * 180 / 3.14159, 1);
+			m_direction = acos(imudata.orientation_w) * 2 * 180 / 3.14159;
+
+			//刷新运动控制使能控件
+			if (theApp.robotServer.robotlist[index].getTorque() == 1)
+			{
+				m_moveEnable.SetCheck(true);
+			}
+			else if (theApp.robotServer.robotlist[index].getTorque() == 0)
+			{
+				m_moveEnable.SetCheck(false);
+			}
 		}
-		else if(theApp.robotServer.robotlist[index].getTorque() == 0)
+
+		//解锁
+		ReleaseMutex(theApp.robotServer.hMutex);
+
+		UpdateData(false);
+	}
+	case 2://定时刷新机器的线速度角速度
+	{
+		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
+
+		for (size_t i = 0; i < theApp.robotServer.getRobotListNum(); i++)
 		{
-			m_moveEnable.SetCheck(false);
+			theApp.robotServer.robotlist[i].pvw.vpush(theApp.robotServer.robotlist[i].v);
+			theApp.robotServer.robotlist[i].pvw.wpush(theApp.robotServer.robotlist[i].w);
+
 		}
+
+		ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+	}
 	}
 
-	//解锁
-	ReleaseMutex(theApp.robotServer.hMutex);
 
-	UpdateData(false);
 
 	CDialogEx::OnTimer(nIDEvent);
 }
@@ -811,6 +879,37 @@ void CMultiRobotDlg::On32777()
 	theApp.visionLSys.delayTime = overtime;
 	m_delaytime = overtime;
 	UpdateData(false);
+	theApp.visionLSys.UpdateXMLfile();
+
+	//定时刷新机器的线速度角速度。
+	SetTimer(2, theApp.visionLSys.delayTime / CasheQueue_MAXSIZE, NULL);
 	return ;
 
+}
+
+//开始标定世界坐标系
+void CMultiRobotDlg::On32778()
+{
+	// TODO: 在此添加命令处理程序代码
+	
+
+	//对所有IPC挂锁。
+	for (size_t i = 0; i < theApp.visionLSys.getIPCNum(); i++)
+	{
+		WaitForSingleObject(theApp.visionLSys.IPC[i].hMutexcap, INFINITE);//锁挂
+	}
+
+	bool ret=theApp.visionLSys.setWorld();
+
+	//对所有IPC解锁。
+	for (size_t i = 0; i < theApp.visionLSys.getIPCNum(); i++)
+	{
+		ReleaseMutex(theApp.visionLSys.IPC[i].hMutexcap);//解锁
+	}
+
+
+	if (ret == false)
+	{
+		AfxMessageBox(_T("标定失败。"));
+	}
 }

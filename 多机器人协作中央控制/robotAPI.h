@@ -2,15 +2,15 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.3
+版  本：beta 0.4
 更  新：
-	1、增加初始化IMU函数
-	2、robot类增加机器人的线速度和角速度变量。并且实时更新状态。
-	3、重新确定了move参数的单位以及实际意义。
+1、添加CasheQueuevw类，主要用于缓存角速度与线速度采样值。并且提供积分接口，以及计算位移变化量接口。并且添加变量在robot中。
+2、添加了opencv库，并且注释掉了std（主要是bind会被重加载）。
 */
 
 
 #pragma once
+#include <opencv2\opencv.hpp>
 #include <stdio.h>
 #include <Winsock2.h>
 #include <cstring>
@@ -19,6 +19,7 @@ robotAPI
 #include <time.h>
 #include <windows.h>
 #include <vector>
+
 
 
 #pragma comment(lib,"ws2_32.lib")
@@ -66,7 +67,7 @@ enum robot_connectStatus_ret
 
 
 
-using namespace std;
+//using namespace std;
 /*******************************************************************************
 * 定义机器人指令数据的结构体
 *******************************************************************************/
@@ -119,6 +120,73 @@ union imumsg_to_char
 	uint8_t bval[40];
 };
 
+
+/******************************************************************************
+* //用于缓存线速度以及角速度的类，并且提供积分接口。
+*******************************************************************************/
+#define CasheQueue_MAXSIZE 20
+class CasheQueuevw
+{
+public:
+	/*
+	@brief:初始化队列缓存。
+	*/
+	void init();
+
+private:
+	int lenth;
+public://成员变量
+	std::vector<float>  v;
+	std::vector<float>  w;
+
+public://接口
+	   /*
+	   @brief:线速度push。
+	   */
+	void vpush(float input);
+
+	/*
+	@brief:角速度push。
+	*/
+	void wpush(float input);
+
+	/*
+	@brief:返回线速度队列大小
+	*/
+	int vsize();
+
+	/*
+	@brief:返回角速度队列大小
+	*/
+	int wsize();
+
+	/*
+	@brief:返回线速度积分，积分下限为0.
+	@param	detaT：时间微分，就是Ts/lenth
+	@param	UPn：积分上限。
+	*/
+	float integralV(float detaT, int UPn = CasheQueue_MAXSIZE);
+
+	/*
+	@brief:返回角速度积分，积分下限为0.
+	@param	detaT：时间微分，就是Ts/lenth
+	@param	UPn：积分上限。
+	*/
+	float integralW(float detaT, int UPn = CasheQueue_MAXSIZE);
+
+	/*
+	@brief:返回延时时间内，补偿位移 △x
+	@param	Ts：原定位系统延时时间
+	@param	theta:n=0时的 绝对角度。
+	@returns:返回补偿位移向量。
+	*/
+	cv::Point2f displace(float Ts, float theta);
+
+
+
+};
+
+
 /*******************************************************************************
 * 定义机器人类
 *******************************************************************************/
@@ -148,6 +216,10 @@ public:
 	float Voltage;
 	float v = 0;//机器人线速度大小
 	float w = 0;//机器人角速度大小
+
+	//定位补偿估计的参数
+	CasheQueuevw pvw;//线速度和角速度，这是要实时更新的队列缓存。
+
 	/*  func   */
 	
 	INT8 move(float lin_val, float ang_val);
@@ -178,7 +250,7 @@ private:
 
 public:
 	SOCKET ServerSock; //服务器的套接字，核心变量
-	vector<robot> robotlist;//用于存储已经在通讯列表中的机器人，可以对这些机器人进行通讯控制
+	std::vector<robot> robotlist;//用于存储已经在通讯列表中的机器人，可以对这些机器人进行通讯控制
 	//用于多线程 监听线程
 	HANDLE hListenThread;
 	DWORD ListenThreadID;

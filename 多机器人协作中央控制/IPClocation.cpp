@@ -4,15 +4,14 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.2
+版  本：beta 0.3
 更  改：
-	1、添加了缓存队列模块类
-	2、添加了整合obj的算法
-	3、添加了部分画坐标系的函数（张猛）
-	4、添加了一个在OBJ群中找机器人ID的函数
-	5、添加定位延时信息存储
-	6、添加了线速度变量
-	7、添加了算法标志位变量
+	1、删除了缓存队列模块类，以及其变量。
+	2、修复setWorld返回总是为false的问题
+	3、添加了delayTime变量，存储定位系统的延时时间。并且加入xml
+	4、添加画坐标点的函数功能（张猛作）。还需要改善，加大可视化。
+	5、为IPCmsg类添加了一个互斥锁，主要保护视频流不同时被多个线程访问。
+	6、公有化UpdateXMLfile等函数。
 */
 
 #include "stdafx.h"
@@ -22,32 +21,6 @@ IPClocation
 
 using namespace std;
 
-/*-----------------------------------------------------------------------------
-					CasheQueue函数接口定义
-							class
-------------------------------------------------------------------------------*/
-void CasheQueue::init(int len)
-{
-	for (size_t i = 0; i < len; i++)
-	{
-		Casheq.push_back(0);
-	}
-}
-void CasheQueue::push(float input)
-{
-	Casheq.push_back(input);
-	vector<float>::iterator iter= Casheq.begin();
-	Casheq.erase(iter);
-}
-int CasheQueue::size()
-{
-	return Casheq.size();
-}
-
-float& CasheQueue::operator[](int index)
-{
-	return this->Casheq[index];
-}
 
 
 
@@ -255,6 +228,7 @@ void IPClocation::UpdateXMLfile()
 	if (xmlfileName.empty() == true) return;
 	FileStorage xml(xmlfileName, cv::FileStorage::WRITE);
 	//rdxml << "IPC" << IPC;
+	xml << "delayTime" << delayTime;
 	xml << "IPCNum" << (int)IPC.size();
 	for (size_t i = 0; i < IPC.size(); i++)
 	{
@@ -281,6 +255,7 @@ void IPClocation::UpdateIPC()
 	//读取IPCxml
 	int IPCNum;
 	xml["IPCNum"] >> IPCNum;
+	xml["delayTime"] >> delayTime;
 	for (size_t i = 0; i < IPCNum; i++)
 	{
 		IPCmsg newipc;
@@ -297,7 +272,7 @@ void IPClocation::UpdateIPC()
 	xml.release();
 
 }
-
+  
 //得到所有IPC的rtsp
 std::vector<std::string> IPClocation::getIPCrtsp()
 {
@@ -384,7 +359,7 @@ bool IPClocation::setWorld()
 
 	}
 	UpdateXMLfile();
-	
+	return true;
 }
 
 /*
@@ -1147,4 +1122,94 @@ int IPClocation::findVecterElm(vector<IPCobj> vec, uint8_t robotidid)
 	}
 	return -1;
 
+}
+
+
+
+
+Mat IPClocation::paintObject(vector<IPCobj> input, Point2d center, float scale)
+{
+	vector<Point2d> points;
+	vector<Point2d>	directions;
+	for (int i = 0; i < input.size(); i++)
+	{
+		points.push_back(Point2d(input[i].coordinate3D[0], input[i].coordinate3D[1]));
+		directions.push_back(Point2d(input[i].direction3D[0], input[i].direction3D[1]));
+	}
+	double rows = center.y * 2; //图片的行
+	double cols = center.x * 2;
+
+	/*if (min(rows, cols) < 10 * scale)
+	{
+		cout << "图片的高宽太小,程序退出" << endl;
+		exit(0);
+	}*/
+	Mat back(rows, cols, CV_8UC3, Scalar(255, 255, 255));
+	Point2d oPoint = center; //中心点坐标
+	vector<Point2d> xPoint; //x轴坐标
+	vector<Point2d> yPoint;
+	for (int i = -5; i <= 5; i++)
+	{
+		xPoint.push_back(Point2d(oPoint.x + i * scale, oPoint.y));
+	}
+
+	for (int i = -5; i <= 5; i++)
+	{
+		yPoint.push_back(Point2d(oPoint.x, oPoint.y + i * scale));
+	}
+	//sort(yPoint.begin(), yPoint.end(), cmp); //降序排列
+
+	Point2d xEnd = Point2d(xPoint[10].x + 20, xPoint[10].y); //x轴终点
+	Point2d yEnd = Point2d(yPoint[10].x, yPoint[10].y - 20); //y轴终点
+	line(back, xPoint[0], xEnd, 0); //画出x轴
+	drawCoorArrow(back, xEnd, Point2d(scale * 1 + cols / 2, -scale * 0 + rows / 2), oPoint, 5, 45, Scalar(0, 0, 0), 1);//画x轴的箭头
+
+	line(back, yPoint[0], yEnd, 0);//画出y轴
+	drawCoorArrow(back, yEnd, Point2d(scale * 0 + cols / 2, -scale * 1 + rows / 2), oPoint, 5, 45, Scalar(0, 0, 0), 1);//画y轴的箭头
+
+																													   //显示x，y轴的坐标值
+	char text[11];
+	for (int i = -5; i <= 5; i++)
+	{
+		if (i == 0)
+		{
+			continue;
+		}
+		sprintf_s(text, "%d", i); //格式化输出
+		putText(back, text, xPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
+	}
+	for (int i = -5; i <= 5; i++)
+	{
+		sprintf_s(text, "%d", i);
+		putText(back, text, yPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
+	}
+
+	for (int i = 0; i < points.size(); i++)
+	{
+		int id = input[i].ID;
+		//显示机器人的信息
+		if (input[i].cls == 1)
+		{
+			circle(back, Point2d(scale * points[i].x + cols / 2, -scale * points[i].y + rows / 2), 4, Scalar(0, 0, 255), -1); //显示位置
+			drawArrow(back, Point2d(scale * points[i].x + cols / 2, -scale * points[i].y + rows / 2), Point2d(scale * directions[i].x + cols / 2, -scale * directions[i].y + rows / 2),
+				oPoint, 10, 45, Scalar(255, 0, 0)); //显示方向，用箭头表示
+													//显示id
+			string str;
+			stringstream ss;
+			ss << id;
+			ss >> str;
+			putText(back, str, Point2d(scale * points[i].x + cols / 2 - 8, -scale * points[i].y + rows / 2 - 10), CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
+		}
+		//显示其他物体的位置
+		else
+		{
+			rectangle(back, Point2d(scale * points[i].x + cols / 2 - 5, -scale * points[i].y + rows / 2 - 5),
+				Point2d(scale * points[i].x + cols / 2 + 5, -scale * points[i].y + rows / 2 + 5), Scalar(0, 255, 0), -1); //显示位置
+		}
+	}
+
+	//imshow("back", back);
+	//imwrite("2.jpg", back);
+	//waitKey(0);
+	return back;
 }

@@ -2,17 +2,88 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.3
+版  本：beta 0.4
 更  新：
-1、增加初始化IMU函数
-2、robot类增加机器人的线速度和角速度变量。并且实时更新状态。
-3、重新确定了move参数的单位以及实际意义。
+	1、添加CasheQueuevw类，主要用于缓存角速度与线速度采样值。并且提供积分接口，以及计算位移变化量接口。并且添加变量在robot中。
+	2、添加了opencv库，并且注释掉了std（主要是bind会被重加载）。
 */
 
 
 #include "stdafx.h"
 #include "robotAPI.h"
 
+
+/*-----------------------------------------------------------------------------
+CasheQueuevw函数接口定义
+class
+------------------------------------------------------------------------------*/
+void CasheQueuevw::init()
+{
+	for (size_t i = 0; i < CasheQueue_MAXSIZE; i++)
+	{
+		v.push_back(0);
+		w.push_back(0);
+	}
+}
+
+void CasheQueuevw::vpush(float input)
+{
+	v.push_back(input);
+	std::vector<float>::iterator iter = v.begin();
+	v.erase(iter);
+}
+void CasheQueuevw::wpush(float input)
+{
+	w.push_back(input);
+	std::vector<float>::iterator iter = w.begin();
+	w.erase(iter);
+}
+
+int CasheQueuevw::vsize()
+{
+	return v.size();
+}
+int CasheQueuevw::wsize()
+{
+	return w.size();
+}
+
+float CasheQueuevw::integralV(float detaT, int UPn)
+{
+	float sum = 0;
+	for (size_t i = 0; i < UPn; i++)
+	{
+		sum = sum + v[i];
+	}
+	return sum*detaT;
+}
+float CasheQueuevw::integralW(float detaT, int UPn)
+{
+	float sum = 0;
+	for (size_t i = 0; i < UPn; i++)
+	{
+		sum = sum + w[i];
+	}
+	return sum*detaT;
+}
+/*
+@brief:返回延时时间内，补偿位移 △x
+*/
+
+cv::Point2f CasheQueuevw::displace(float Ts,float theta)
+{
+	float detaT = Ts / CasheQueue_MAXSIZE;
+	cv::Point2f sumv; sumv.x = 0; sumv.y = 0;
+	for (size_t i = 0; i < CasheQueue_MAXSIZE; i++)
+	{
+		float thetai = integralW(detaT, i)+ theta;
+		sumv.x = sumv.x + v[i] * cos(thetai);
+		sumv.y = sumv.y + v[i] * sin(thetai);
+	}
+	sumv.x = sumv.x*detaT;
+	sumv.y = sumv.y*detaT;
+	return sumv;
+}
 
 /*-----------------------------------------------------------------------------
 						robot函数接口定义
@@ -32,6 +103,8 @@ robot::robot(SOCKET socket, struct sockaddr_in sin)
 	{
 		connectStatus = ROBOT_connectStatus_3Level;
 	}
+
+	pvw.init();
 
 }
 

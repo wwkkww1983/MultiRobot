@@ -13,7 +13,7 @@
 #include "zfun.h"
 #include "IPClocation.h"
 
-
+using namespace std;
 // CMultiRobotApp: 
 // 有关此类的实现，请参阅 多机器人协作中央控制.cpp
 //

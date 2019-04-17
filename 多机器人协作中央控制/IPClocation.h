@@ -4,15 +4,14 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.2
+版  本：beta 0.3
 更  改：
-1、添加了缓存队列模块类
-2、添加了整合obj的算法
-3、添加了部分画坐标系的函数（张猛）
-4、添加了一个在OBJ群中找机器人ID的函数
-5、添加定位延时信息存储
-6、添加了线速度变量
-7、添加了算法标志位变量
+	1、删除了缓存队列模块类，以及其变量。
+	2、修复setWorld返回总是为false的问题
+	3、添加了delayTime变量，存储定位系统的延时时间。并且加入xml
+	4、添加画坐标点的函数功能（张猛作）。还需要改善，加大可视化。
+	5、为IPCmsg类添加了一个互斥锁，主要保护视频流不同时被多个线程访问。
+	6、公有化UpdateXMLfile等函数。
 */
 
 #pragma once
@@ -30,21 +29,8 @@ IPClocation
 
 using namespace cv;
 
-class CasheQueue
-{
-public:
-	void init(int len);
-
-private:
-	std::vector<float>  Casheq;
-public:
-	void push(float input);
-	int size();
-
-	float& operator[](int index);
 
 
-};
 
 
 
@@ -91,6 +77,7 @@ public:
 	Mat distCoeffs;  //相机畸变参数
 	Mat RwMatrix, TwVec, RwMatrixI; //外参旋转矩阵和位移矩阵、以及旋转矩阵的逆矩阵
 	VideoCapture cap;//如果 Open()成功 ，就可以访问这个流。
+	HANDLE hMutexcap;//用于保护 cap流。不被同时多个线程调用。
 	//IPC状态类型
 	enum StatusEnum
 	{
@@ -142,8 +129,8 @@ public:
 	int Algorithm=0;//0:AR姿态估计定位   1:多相机交点定位
 	//定位延时
 	double delayTime = 0;
-	//定位补偿估计的参数
-	CasheQueue pv;//线速度
+
+	
 
 private:
 	
@@ -162,9 +149,6 @@ private:
 
 	//存储相机参数
 	String xmlfileName;
-
-	void UpdateXMLfile();//从IPC中重新更新到xmlFILE中，私有函数。只有bind了才能 Update
-	void UpdateIPC();	 //从xmlFILE中重新更新到IPC中，私有函数。只有bind了才能 Update
 
 	//自定义函数
 	/*
@@ -303,9 +287,17 @@ public://输出函数接口
 	*/
 	std::vector<IPCobj> calculateAllObjection(std::vector<std::vector<IPCobj>> eobj);
 
+
+	void UpdateXMLfile();//从IPC中重新更新到xmlFILE中，私有函数。只有bind了才能 Update
+	void UpdateIPC();	 //从xmlFILE中重新更新到IPC中，私有函数。只有bind了才能 Update
+
+	/*
+	*@brief：画出obj
+	@@author:张猛
+	*/
+	Mat paintObject(std::vector<IPCobj> input, Point2d center = Point2d(400, 300), float scale = 50);
 	/*
 	*@brief：找元素
-
 	*/
 	int findVecterElm(std::vector<IPCobj> vec, uint8_t robotidid);
 
