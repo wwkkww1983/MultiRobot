@@ -1,17 +1,12 @@
-/*
+ï»¿/*
 IPClocation
-Ëµ  Ã÷£ºÒ»¸öÓÃRTSPµØÖ·IPÉãÏñÍ·À´½øĞĞ¶¨Î»µÄ¿â£¬Ìá¹©ÁË¶¨Î»½Ó¿Ú
-²¢ÇÒÌá¹©ÁËÒ»¸öÏûÏ¢ÀàIPCobj£¬¿ÉÒÔ×÷ÎªÏûÏ¢Êä³ö£¬´æ´¢ÁËÔÚ³¡µØÉÏÓĞ¶àÉÙ
-ÎïÌå²¢ÇÒ¸ø³öÁËËûµÄÎ»ÖÃ¡£
-ÖÆ×÷ÈË£º×ŞÖÇÇ¿
-°æ  ±¾£ºbeta 0.3
-¸ü  ¸Ä£º
-	1¡¢É¾³ıÁË»º´æ¶ÓÁĞÄ£¿éÀà£¬ÒÔ¼°Æä±äÁ¿¡£
-	2¡¢ĞŞ¸´setWorld·µ»Ø×ÜÊÇÎªfalseµÄÎÊÌâ
-	3¡¢Ìí¼ÓÁËdelayTime±äÁ¿£¬´æ´¢¶¨Î»ÏµÍ³µÄÑÓÊ±Ê±¼ä¡£²¢ÇÒ¼ÓÈëxml
-	4¡¢Ìí¼Ó»­×ø±êµãµÄº¯Êı¹¦ÄÜ£¨ÕÅÃÍ×÷£©¡£»¹ĞèÒª¸ÄÉÆ£¬¼Ó´ó¿ÉÊÓ»¯¡£
-	5¡¢ÎªIPCmsgÀàÌí¼ÓÁËÒ»¸ö»¥³âËø£¬Ö÷Òª±£»¤ÊÓÆµÁ÷²»Í¬Ê±±»¶à¸öÏß³Ì·ÃÎÊ¡£
-	6¡¢¹«ÓĞ»¯UpdateXMLfileµÈº¯Êı¡£
+è¯´  æ˜ï¼šä¸€ä¸ªç”¨RTSPåœ°å€IPæ‘„åƒå¤´æ¥è¿›è¡Œå®šä½çš„åº“ï¼Œæä¾›äº†å®šä½æ¥å£
+å¹¶ä¸”æä¾›äº†ä¸€ä¸ªæ¶ˆæ¯ç±»IPCobjï¼Œå¯ä»¥ä½œä¸ºæ¶ˆæ¯è¾“å‡ºï¼Œå­˜å‚¨äº†åœ¨åœºåœ°ä¸Šæœ‰å¤šå°‘
+ç‰©ä½“å¹¶ä¸”ç»™å‡ºäº†ä»–çš„ä½ç½®ã€‚
+åˆ¶ä½œäººï¼šé‚¹æ™ºå¼º
+ç‰ˆ  æœ¬ï¼šbeta 0.4
+æ›´  æ”¹ï¼š
+	1ã€æ›´æ–°2Dåœ°å›¾å‡½æ•°
 */
 
 #include "stdafx.h"
@@ -30,11 +25,11 @@ IPCobj::IPCobj()
 }
 
 /*-----------------------------------------------------------------------------
-						IPCmsgº¯Êı½Ó¿Ú¶¨Òå
+						IPCmsgå‡½æ•°æ¥å£å®šä¹‰
 							class
 ------------------------------------------------------------------------------*/
 
-//³õÊ¼»¯£¬Ö÷Òª³õÊ¼»¯¾ØÕó´óĞ¡
+//åˆå§‹åŒ–ï¼Œä¸»è¦åˆå§‹åŒ–çŸ©é˜µå¤§å°
 IPCmsg::IPCmsg()
 {
 	cameraMatrix= Mat(3, 3, CV_32FC1, Scalar::all(0));
@@ -77,7 +72,7 @@ void IPCmsg::updateRwMatrixI()
 
 
 /*-----------------------------------------------------------------------------
-					IPClocationº¯Êı½Ó¿Ú¶¨Òå
+					IPClocationå‡½æ•°æ¥å£å®šä¹‰
 							class
 ------------------------------------------------------------------------------*/
 IPClocation::IPClocation()
@@ -88,34 +83,34 @@ IPClocation::IPClocation()
 
 bool IPClocation::AddIPC(string filedir, cv::Size board_size, cv::Size square_size, cv::String rtsp,double err_th)
 {
-	//²é¿´ÊÇ·ñÓĞrtspÖØ¸´£¬ÓĞÔò·µ»Ø´íÎó
+	//æŸ¥çœ‹æ˜¯å¦æœ‰rtspé‡å¤ï¼Œæœ‰åˆ™è¿”å›é”™è¯¯
 	vector<string> allipcrtsp=getIPCrtsp();
 	if (zfun::findVecterElm(allipcrtsp, rtsp) != -1)
 	{
-		printf("error:IPCÖĞ´æÔÚÏàÍ¬rtspµØÖ·µÄIPÏà»ú");
+		printf("error:IPCä¸­å­˜åœ¨ç›¸åŒrtspåœ°å€çš„IPç›¸æœº");
 		return false;
 	}
 
-	//±ê¶¨½á¹û
+	//æ ‡å®šç»“æœ
 	Mat cameraMatrix;
 	Mat distCoeffs; 
 	vector<Mat> rvecsMat; 
 	vector<Mat> tvecsMat;
 	
-	int image_count = 0;                                            // Í¼ÏñÊıÁ¿ 
-	Size image_size;                                                // Í¼ÏñµÄ³ß´ç 
+	int image_count = 0;                                            // å›¾åƒæ•°é‡ 
+	Size image_size;                                                // å›¾åƒçš„å°ºå¯¸ 
 
-	std::vector<Point2f> image_points;                              // »º´æÃ¿·ùÍ¼ÏñÉÏ¼ì²âµ½µÄ½Çµã
-	std::vector<std::vector<Point2f>> image_points_seq;             // ±£´æ¼ì²âµ½µÄËùÓĞ½Çµã
+	std::vector<Point2f> image_points;                              // ç¼“å­˜æ¯å¹…å›¾åƒä¸Šæ£€æµ‹åˆ°çš„è§’ç‚¹
+	std::vector<std::vector<Point2f>> image_points_seq;             // ä¿å­˜æ£€æµ‹åˆ°çš„æ‰€æœ‰è§’ç‚¹
 
-	//¼ì²âÎÄ¼ş¼ĞÏÂµÄËùÓĞjpgÍ¼Æ¬
-	std::vector<std::string> FilesName;//´æ´¢ËùÓĞÍ¼Æ¬ÎÄ¼ş
+	//æ£€æµ‹æ–‡ä»¶å¤¹ä¸‹çš„æ‰€æœ‰jpgå›¾ç‰‡
+	std::vector<std::string> FilesName;//å­˜å‚¨æ‰€æœ‰å›¾ç‰‡æ–‡ä»¶
 	string FileType = ".jpg";
 	std::string buffer = filedir + "\\*" + FileType;
-	_finddata_t c_file;   // ´æ·ÅÎÄ¼şÃûµÄ½á¹¹Ìå
+	_finddata_t c_file;   // å­˜æ”¾æ–‡ä»¶åçš„ç»“æ„ä½“
 	long long hFile;
-	hFile = _findfirst(buffer.c_str(), &c_file);   //ÕÒµÚÒ»¸öÎÄ¼şÃü
-	if (hFile == -1L)   // ¼ì²éÎÄ¼ş¼ĞÄ¿Â¼ÏÂ´æÔÚĞèÒª²éÕÒµÄÎÄ¼ş
+	hFile = _findfirst(buffer.c_str(), &c_file);   //æ‰¾ç¬¬ä¸€ä¸ªæ–‡ä»¶å‘½
+	if (hFile == -1L)   // æ£€æŸ¥æ–‡ä»¶å¤¹ç›®å½•ä¸‹å­˜åœ¨éœ€è¦æŸ¥æ‰¾çš„æ–‡ä»¶
 		printf("No %s files in current directory!\n", FileType);
 	else
 	{
@@ -123,22 +118,22 @@ bool IPClocation::AddIPC(string filedir, cv::Size board_size, cv::Size square_si
 		do
 		{
 			fullFilePath.clear();
-			//Ãû×Ö
+			//åå­—
 			fullFilePath = filedir + "\\" + c_file.name;
 			FilesName.push_back(fullFilePath);
-		} while (_findnext(hFile, &c_file) == 0);  //Èç¹ûÕÒµ½ÏÂ¸öÎÄ¼şµÄÃû×Ö³É¹¦µÄ»°¾Í·µ»Ø0,·ñÔò·µ»Ø-1  
+		} while (_findnext(hFile, &c_file) == 0);  //å¦‚æœæ‰¾åˆ°ä¸‹ä¸ªæ–‡ä»¶çš„åå­—æˆåŠŸçš„è¯å°±è¿”å›0,å¦åˆ™è¿”å›-1  
 		_findclose(hFile);
 	}
 
-	//¼ì²â½Çµã
+	//æ£€æµ‹è§’ç‚¹
 	for (int i = 0; i < FilesName.size(); i++)
 	{
 		image_count++;
 
-		// ÓÃÓÚ¹Û²ì¼ìÑéÊä³ö
+		// ç”¨äºè§‚å¯Ÿæ£€éªŒè¾“å‡º
 		cout << "image_count = " << image_count << endl;
 		Mat imageInput = imread(FilesName[i]);
-		if (image_count == 1)  //¶ÁÈëµÚÒ»ÕÅÍ¼Æ¬Ê±»ñÈ¡Í¼Ïñ¿í¸ßĞÅÏ¢
+		if (image_count == 1)  //è¯»å…¥ç¬¬ä¸€å¼ å›¾ç‰‡æ—¶è·å–å›¾åƒå®½é«˜ä¿¡æ¯
 		{
 			image_size.width = imageInput.cols;
 			image_size.height = imageInput.rows;
@@ -146,11 +141,11 @@ bool IPClocation::AddIPC(string filedir, cv::Size board_size, cv::Size square_si
 			cout << "image_size.height = " << image_size.height << endl;
 		}
 
-		/* ÌáÈ¡½Çµã */
+		/* æå–è§’ç‚¹ */
 		bool ok = findChessboardCorners(imageInput, board_size, image_points, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE);
 		if (0 == ok)
 		{
-			cout << "µÚ" << image_count << "ÕÅÕÕÆ¬ÌáÈ¡½ÇµãÊ§°Ü£¬ÇëÉ¾³ıºó£¬ÖØĞÂ±ê¶¨£¡" << endl; //ÕÒ²»µ½½Çµã
+			cout << "ç¬¬" << image_count << "å¼ ç…§ç‰‡æå–è§’ç‚¹å¤±è´¥ï¼Œè¯·åˆ é™¤åï¼Œé‡æ–°æ ‡å®šï¼" << endl; //æ‰¾ä¸åˆ°è§’ç‚¹
 			
 			return false;
 		}
@@ -160,24 +155,24 @@ bool IPClocation::AddIPC(string filedir, cv::Size board_size, cv::Size square_si
 			cout << "imageInput.channels()=" << imageInput.channels() << endl;
 			cvtColor(imageInput, view_gray, CV_RGB2GRAY);
 
-			/* ÑÇÏñËØ¾«È·»¯ */
-			//find4QuadCornerSubpix(view_gray, image_points, Size(5, 5)); //¶Ô´ÖÌáÈ¡µÄ½Çµã½øĞĞ¾«È·»¯
+			/* äºšåƒç´ ç²¾ç¡®åŒ– */
+			//find4QuadCornerSubpix(view_gray, image_points, Size(5, 5)); //å¯¹ç²—æå–çš„è§’ç‚¹è¿›è¡Œç²¾ç¡®åŒ–
 			cv::cornerSubPix(view_gray, image_points, cv::Size(11, 11), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 20, 0.01));
 
-			image_points_seq.push_back(image_points);  //±£´æÑÇÏñËØ½Çµã
+			image_points_seq.push_back(image_points);  //ä¿å­˜äºšåƒç´ è§’ç‚¹
 
-													   /* ÔÚÍ¼ÏñÉÏÏÔÊ¾½ÇµãÎ»ÖÃ */
+													   /* åœ¨å›¾åƒä¸Šæ˜¾ç¤ºè§’ç‚¹ä½ç½® */
 			drawChessboardCorners(view_gray, board_size, image_points, true);
 
-			//imshow("Camera Calibration", view_gray);//ÏÔÊ¾Í¼Æ¬
-			//waitKey(100);//ÔİÍ£0.1S     
+			//imshow("Camera Calibration", view_gray);//æ˜¾ç¤ºå›¾ç‰‡
+			//waitKey(100);//æš‚åœ0.1S     
 		}
 	}
-	cout << "½ÇµãÌáÈ¡Íê³É£¡£¡£¡" << endl;
+	cout << "è§’ç‚¹æå–å®Œæˆï¼ï¼ï¼" << endl;
 
 
-	/*ÆåÅÌÈıÎ¬ĞÅÏ¢*/
-	vector<vector<Point3f>> object_points_seq;                     // ±£´æ±ê¶¨°åÉÏ½ÇµãµÄÈıÎ¬×ø±ê
+	/*æ£‹ç›˜ä¸‰ç»´ä¿¡æ¯*/
+	vector<vector<Point3f>> object_points_seq;                     // ä¿å­˜æ ‡å®šæ¿ä¸Šè§’ç‚¹çš„ä¸‰ç»´åæ ‡
 	for (int t = 0; t < image_count; t++)
 	{
 		vector<Point3f> object_points;
@@ -186,7 +181,7 @@ bool IPClocation::AddIPC(string filedir, cv::Size board_size, cv::Size square_si
 			for (int j = 0; j < board_size.width; j++)
 			{
 				Point3f realPoint;
-				/* ¼ÙÉè±ê¶¨°å·ÅÔÚÊÀ½ç×ø±êÏµÖĞz=0µÄÆ½ÃæÉÏ */
+				/* å‡è®¾æ ‡å®šæ¿æ”¾åœ¨ä¸–ç•Œåæ ‡ç³»ä¸­z=0çš„å¹³é¢ä¸Š */
 				realPoint.x = i*square_size.width;
 				realPoint.y = j*square_size.height;
 				realPoint.z = 0;
@@ -196,33 +191,33 @@ bool IPClocation::AddIPC(string filedir, cv::Size board_size, cv::Size square_si
 		object_points_seq.push_back(object_points);
 	}
 
-	/* ÔËĞĞ±ê¶¨º¯Êı */
+	/* è¿è¡Œæ ‡å®šå‡½æ•° */
 
 	double err_first = calibrateCamera(object_points_seq, image_points_seq, image_size, cameraMatrix, distCoeffs, rvecsMat, tvecsMat, CV_CALIB_FIX_K3);
-	cout << "ÖØÍ¶Ó°Îó²î1£º" << err_first << "ÏñËØ" << endl << endl;
-	cout << "±ê¶¨Íê³É£¡£¡£¡" << endl;
+	cout << "é‡æŠ•å½±è¯¯å·®1ï¼š" << err_first << "åƒç´ " << endl << endl;
+	cout << "æ ‡å®šå®Œæˆï¼ï¼ï¼" << endl;
 
-	//Èç¹ûÎó²îÌ«´ó£¬Ôò·µ»Ø´íÎó
+	//å¦‚æœè¯¯å·®å¤ªå¤§ï¼Œåˆ™è¿”å›é”™è¯¯
 	if (err_first > err_th)
 	{
-		printf("error:Îó²îÌ«´ó");
+		printf("error:è¯¯å·®å¤ªå¤§");
 		return false;
 	}
 	
 	
-	//Ìí¼ÓIPC
+	//æ·»åŠ IPC
 	IPCmsg newIPC(rtsp);
 	newIPC.cameraMatrix = cameraMatrix;
 	newIPC.distCoeffs = distCoeffs;
 	IPC.push_back(newIPC);
 
-	//±£´æ¶¨±ê½á¹û    
+	//ä¿å­˜å®šæ ‡ç»“æœ    
 	UpdateXMLfile();
 
 	return true;
 }
 
-//´ÓIPCÖĞÖØĞÂ¸üĞÂµ½xmlFILEÖĞ£¬Ë½ÓĞº¯Êı¡£
+//ä»IPCä¸­é‡æ–°æ›´æ–°åˆ°xmlFILEä¸­ï¼Œç§æœ‰å‡½æ•°ã€‚
 void IPClocation::UpdateXMLfile()
 {
 	if (xmlfileName.empty() == true) return;
@@ -246,13 +241,13 @@ void IPClocation::UpdateIPC()
 {
 	if (xmlfileName.empty() == true) return;
 	FileStorage xml(xmlfileName, cv::FileStorage::READ);
-	//Çå¿ÕIPC£¬¹Ø±ÕÉãÏñÍ·
+	//æ¸…ç©ºIPCï¼Œå…³é—­æ‘„åƒå¤´
 	for (size_t i = 0; i < IPC.size(); i++)
 	{
 		IPC[i].cap.release();
 	}
 	IPC.clear();
-	//¶ÁÈ¡IPCxml
+	//è¯»å–IPCxml
 	int IPCNum;
 	xml["IPCNum"] >> IPCNum;
 	xml["delayTime"] >> delayTime;
@@ -273,7 +268,7 @@ void IPClocation::UpdateIPC()
 
 }
   
-//µÃµ½ËùÓĞIPCµÄrtsp
+//å¾—åˆ°æ‰€æœ‰IPCçš„rtsp
 std::vector<std::string> IPClocation::getIPCrtsp()
 {
 	vector<string> outrtsp;
@@ -285,12 +280,12 @@ std::vector<std::string> IPClocation::getIPCrtsp()
 }
 
 /*
-*@brief£ºÓëÒ»¸öxmlÎÄ¼şÍ¬²½£¬ÊµÏÖÁËflash¹¦ÄÜ,Ö»ÓĞÃ»ÓĞxmlfileNameÊ±£¬²ÅÉúĞ§¡£
+*@briefï¼šä¸ä¸€ä¸ªxmlæ–‡ä»¶åŒæ­¥ï¼Œå®ç°äº†flashåŠŸèƒ½,åªæœ‰æ²¡æœ‰xmlfileNameæ—¶ï¼Œæ‰ç”Ÿæ•ˆã€‚
 */
 void IPClocation::bindxml(std::string xmlfile)
 {
 	xmlfileName = xmlfile;
-	//²é¿´ÊÇ·ñ´æÔÚxml
+	//æŸ¥çœ‹æ˜¯å¦å­˜åœ¨xml
 	FileStorage tsxml(xmlfileName, cv::FileStorage::READ);
 	if (tsxml.isOpened() == true)
 	{
@@ -305,35 +300,35 @@ void IPClocation::bindxml(std::string xmlfile)
 }
 
 /*
-*@brief£ºÉèÁ¢ÊÀ½ç×ø±êÏµ£¬¼´¶ÔËùÓĞµÄIPCÖØÉèÍâ²Î¡£Õâ¸öº¯Êıµ±ËùÓĞIPCÔÚÏßÊ±²Å³ÉÁ¢
-ÔËĞĞ´Ëº¯ÊıÊ±£¬Ó¦¸Ã±£Ö¤ËùÓĞIPC·Ö²¼ÔÚËÄÖÜ£¬ÇÒ³¡ÖĞĞÄÓĞÒ»¸ö±ê¶¨ARtag£¬ÇÒËùÓĞIPC¶¼
-ÄÜ¿´µ½´Ë±ê¶¨ARtag¡£
+*@briefï¼šè®¾ç«‹ä¸–ç•Œåæ ‡ç³»ï¼Œå³å¯¹æ‰€æœ‰çš„IPCé‡è®¾å¤–å‚ã€‚è¿™ä¸ªå‡½æ•°å½“æ‰€æœ‰IPCåœ¨çº¿æ—¶æ‰æˆç«‹
+è¿è¡Œæ­¤å‡½æ•°æ—¶ï¼Œåº”è¯¥ä¿è¯æ‰€æœ‰IPCåˆ†å¸ƒåœ¨å››å‘¨ï¼Œä¸”åœºä¸­å¿ƒæœ‰ä¸€ä¸ªæ ‡å®šARtagï¼Œä¸”æ‰€æœ‰IPCéƒ½
+èƒ½çœ‹åˆ°æ­¤æ ‡å®šARtagã€‚
 */
 bool IPClocation::setWorld()
 {
-	//¼ì²éËùÓĞIPÏà»úÊÇ·ñÄÜ´ò¿ª¡£
+	//æ£€æŸ¥æ‰€æœ‰IPç›¸æœºæ˜¯å¦èƒ½æ‰“å¼€ã€‚
 	for (size_t ipci = 0; ipci < IPC.size(); ipci++)
 	{
 		if (IPC[ipci].Open() == false) return false;
 	}
-	//¶ÔËùÓĞIPC·Ö±ğ½øĞĞ²ÉÑù±ê¶¨
+	//å¯¹æ‰€æœ‰IPCåˆ†åˆ«è¿›è¡Œé‡‡æ ·æ ‡å®š
 	for (size_t ipci = 0; ipci < IPC.size(); ipci++)
 	{
-		//Ïà»ú×ø±êÏµµÄÎ»×ËĞÅÏ¢
+		//ç›¸æœºåæ ‡ç³»çš„ä½å§¿ä¿¡æ¯
 		vector< Vec3d > rvecs, tvecs;
 		vector<int> ids;
-		//×Öµä
+		//å­—å…¸
 		Ptr<aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(ARtag_dict);
-		//Í¼Æ¬
+		//å›¾ç‰‡
 		Mat image, imageCopy;
-		//´ÓÏà»ú²ÉÑù
+		//ä»ç›¸æœºé‡‡æ ·
 		IPC[ipci].cap >> image;
 		resize(image, imageCopy, Size(1280, 720));
 
-		//¿ªÊ¼¼ÆËã
+		//å¼€å§‹è®¡ç®—
 		vector<vector<Point2f> > corners;
 		cv::aruco::detectMarkers(imageCopy, dictionary, corners, ids);
-		// Èç¹ûÓĞARÂë£¬Ôò½øĞĞ×ËÌ¬¹À¼Æ
+		// å¦‚æœæœ‰ARç ï¼Œåˆ™è¿›è¡Œå§¿æ€ä¼°è®¡
 		if (ids.size() > 0)
 		{
 			cv::aruco::estimatePoseSingleMarkers(corners, worldAR_size, IPC[ipci].cameraMatrix, IPC[ipci].distCoeffs, rvecs, tvecs);
@@ -342,12 +337,12 @@ bool IPClocation::setWorld()
 		{
 			return false;
 		}
-		//²éÕÒÊÇ·ñÓĞ±ê¶¨ARÂë
-		int orignum = zfun::findVecterElm(ids, worldAR_ID);//±ê¶¨tagÂëËùÔÚµÄÒıË÷
-		//Èç¹ûÓĞ±ê¶¨ARÂë
+		//æŸ¥æ‰¾æ˜¯å¦æœ‰æ ‡å®šARç 
+		int orignum = zfun::findVecterElm(ids, worldAR_ID);//æ ‡å®štagç æ‰€åœ¨çš„å¼•ç´¢
+		//å¦‚æœæœ‰æ ‡å®šARç 
 		if (orignum >= 0)
 		{
-			//µÃµ½£¨ÊÀ½ç×ø±êÏµµÄRT£©
+			//å¾—åˆ°ï¼ˆä¸–ç•Œåæ ‡ç³»çš„RTï¼‰
 			Rodrigues(rvecs[orignum], IPC[ipci].RwMatrix);
 			IPC[ipci].TwVec = Mat(tvecs[orignum], true);
 			IPC[ipci].updateRwMatrixI();
@@ -363,16 +358,16 @@ bool IPClocation::setWorld()
 }
 
 /*
-*@brief£ºµÃµ½Ö¸¶¨IPC±àºÅµÄ¾­¹ıAR´¦ÀíµÄÍ¼Æ¬
+*@briefï¼šå¾—åˆ°æŒ‡å®šIPCç¼–å·çš„ç»è¿‡ARå¤„ç†çš„å›¾ç‰‡
 */
 Mat IPClocation::getIPCARPimage(int index)
 {
 	Mat img;
 	IPC[index].cap >> img;
 	resize(img, img, Size(1280, 720));
-	//Ïà»ú×ø±êÏµµÄÎ»×ËĞÅÏ¢
+	//ç›¸æœºåæ ‡ç³»çš„ä½å§¿ä¿¡æ¯
 	vector<int> ids;
-	double starttime = cv::getTickCount();//¼ÆÊ±
+	double starttime = cv::getTickCount();//è®¡æ—¶
 
 	vector<vector<Point2f> > corners;
 	Ptr<aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(aruco::DICT_6X6_250);
@@ -381,25 +376,25 @@ Mat IPClocation::getIPCARPimage(int index)
 	if (ids.size() > 0)
 	{
 		
-		vector< Vec3d > rvecsx, tvecsx;		//´æ´¢Ğ¡ºÅ»úÆ÷ÈËµÄ×ËÌ¬
-		vector<int> idsx;					//´¢´æĞ¡ºÅ»úÆ÷ÈËµÄID
-		vector<vector<Point2f> > cornersx;	//´¢´æĞ¡ºÅ»úÆ÷ÈËµÄ½Çµã
+		vector< Vec3d > rvecsx, tvecsx;		//å­˜å‚¨å°å·æœºå™¨äººçš„å§¿æ€
+		vector<int> idsx;					//å‚¨å­˜å°å·æœºå™¨äººçš„ID
+		vector<vector<Point2f> > cornersx;	//å‚¨å­˜å°å·æœºå™¨äººçš„è§’ç‚¹
 
-		//Ñ¡È¡Ğ¡ºÅ»úÆ÷ÈËµÄidºÍ½ÇµãÎ»ÖÃ
+		//é€‰å–å°å·æœºå™¨äººçš„idå’Œè§’ç‚¹ä½ç½®
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[1][0] && ids[i] <= AR_ID_distribList[1][1])
 			{
-				//ÕÒµ½ÁËĞ¡ºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å°å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
 		if (idsx.size() > 0)
 		{
-			//¶ÔÕâĞ©Ğ¡ºÅ»úÆ÷ÈË½øĞĞ×ËÌ¬¹À¼Æ
+			//å¯¹è¿™äº›å°å·æœºå™¨äººè¿›è¡Œå§¿æ€ä¼°è®¡
 			cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[1][2] / 1000.0, IPC[index].cameraMatrix, IPC[index].distCoeffs, rvecsx, tvecsx);
-			//»­»­
+			//ç”»ç”»
 			cv::aruco::drawDetectedMarkers(img, cornersx, idsx);
 
 			for (int i = 0; i < idsx.size(); i++)
@@ -408,21 +403,21 @@ Mat IPClocation::getIPCARPimage(int index)
 
 		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
 
-		//Ñ¡È¡´óºÅ»úÆ÷ÈËµÄidºÍ½ÇµãÎ»ÖÃ
+		//é€‰å–å¤§å·æœºå™¨äººçš„idå’Œè§’ç‚¹ä½ç½®
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[0][0] && ids[i] <= AR_ID_distribList[0][1])
 			{
-				//ÕÒµ½ÁËĞ¡ºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å°å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
 		if (idsx.size() > 0)
 		{
-			//¶ÔÕâĞ©Ğ¡ºÅ»úÆ÷ÈË½øĞĞ×ËÌ¬¹À¼Æ
+			//å¯¹è¿™äº›å°å·æœºå™¨äººè¿›è¡Œå§¿æ€ä¼°è®¡
 			cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[0][2] / 1000.0, IPC[index].cameraMatrix, IPC[index].distCoeffs, rvecsx, tvecsx);
-			//»­»­
+			//ç”»ç”»
 			cv::aruco::drawDetectedMarkers(img, cornersx, idsx);
 
 			for (int i = 0; i < idsx.size(); i++)
@@ -430,21 +425,21 @@ Mat IPClocation::getIPCARPimage(int index)
 		}
 
 		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
-		//±ê¶¨ARtag
+		//æ ‡å®šARtag
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i]== worldAR_ID)
 			{
-				//ÕÒµ½ÁËĞ¡ºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å°å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
 		if (idsx.size() > 0)
 		{
-			//¶Ô×ËÌ¬¹À¼Æ
+			//å¯¹å§¿æ€ä¼°è®¡
 			cv::aruco::estimatePoseSingleMarkers(cornersx, worldAR_size, IPC[index].cameraMatrix, IPC[index].distCoeffs, rvecsx, tvecsx);
-			//»­»­
+			//ç”»ç”»
 			cv::aruco::drawDetectedMarkers(img, cornersx, idsx);
 
 			for (int i = 0; i < idsx.size(); i++)
@@ -457,7 +452,7 @@ Mat IPClocation::getIPCARPimage(int index)
 }
 
 /*
-*@brief£ºµÃµ½IPC¸öÊı
+*@briefï¼šå¾—åˆ°IPCä¸ªæ•°
 */
 int IPClocation::getIPCNum()
 {
@@ -465,7 +460,7 @@ int IPClocation::getIPCNum()
 }
 
 /*
-*@brief£º°´ÒıË÷É¾³ıIPC
+*@briefï¼šæŒ‰å¼•ç´¢åˆ é™¤IPC
 */
 bool IPClocation::DeleteIPC(int index)
 {
@@ -480,7 +475,7 @@ bool IPClocation::DeleteIPC(int index)
 }
 
 /*
-*@brief£º°´RTSPÉ¾³ıIPC
+*@briefï¼šæŒ‰RTSPåˆ é™¤IPC
 */
 bool IPClocation::DeleteIPC(String rtsp)
 {
@@ -500,16 +495,16 @@ bool IPClocation::DeleteIPC(String rtsp)
 }
 
 /*
-@brief:ÒÔÒ»ÕÅÀ´×ÔIPCµÄÍ¼Æ¬À´¶¨Î»Í¼ÖĞµÄARÂë£¬·µ»ØÊÀ½ç3D×ø±ê
+@brief:ä»¥ä¸€å¼ æ¥è‡ªIPCçš„å›¾ç‰‡æ¥å®šä½å›¾ä¸­çš„ARç ï¼Œè¿”å›ä¸–ç•Œ3Dåæ ‡
 */
 std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex)
 {
 	std::vector<IPCobj> retobj;
 
-	//¿ªÊ¼¶¨Î»
-	//´æ´¢ËùÓĞidºÅ
+	//å¼€å§‹å®šä½
+	//å­˜å‚¨æ‰€æœ‰idå·
 	vector<int> ids;
-	//´æ´¢ËùÓĞ½Çµã
+	//å­˜å‚¨æ‰€æœ‰è§’ç‚¹
 	vector<vector<Point2f> > corners;
 
 	Mat imageCopy;
@@ -523,47 +518,47 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex)
 	if (ids.size() > 0)
 	{
 		
-		vector< Vec3d > rvecsx, tvecsx;		//´æ´¢Ğ¡ºÅ»úÆ÷ÈËµÄ×ËÌ¬
-		vector<int> idsx;					//´¢´æĞ¡ºÅ»úÆ÷ÈËµÄID
-		vector<vector<Point2f> > cornersx;	//´¢´æĞ¡ºÅ»úÆ÷ÈËµÄ½Çµã
+		vector< Vec3d > rvecsx, tvecsx;		//å­˜å‚¨å°å·æœºå™¨äººçš„å§¿æ€
+		vector<int> idsx;					//å‚¨å­˜å°å·æœºå™¨äººçš„ID
+		vector<vector<Point2f> > cornersx;	//å‚¨å­˜å°å·æœºå™¨äººçš„è§’ç‚¹
 
-		//Ñ¡È¡Ğ¡ºÅ»úÆ÷ÈËµÄidºÍ½ÇµãÎ»ÖÃ
+		//é€‰å–å°å·æœºå™¨äººçš„idå’Œè§’ç‚¹ä½ç½®
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[1][0] && ids[i] <= AR_ID_distribList[1][1])
 			{
-				//ÕÒµ½ÁËĞ¡ºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å°å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
 		if (idsx.size() > 0)
 		{
-			//¶ÔÕâĞ©Ğ¡ºÅ»úÆ÷ÈË½øĞĞ×ËÌ¬¹À¼Æ
+			//å¯¹è¿™äº›å°å·æœºå™¨äººè¿›è¡Œå§¿æ€ä¼°è®¡
 			cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[1][2] / 1000.0, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx, tvecsx);
 		}
-		//µÃµ½ÕâĞ©Ğ¡ºÅ»úÆ÷ÈËÊÀ½ç×ø±êÏµ×ø±ê
+		//å¾—åˆ°è¿™äº›å°å·æœºå™¨äººä¸–ç•Œåæ ‡ç³»åæ ‡
 		for (size_t i = 0; i < idsx.size(); i++)
 		{
-			//¶¨ÒåÒ»¸öIPCobj ÓÃÓÚ¼ÇÂ¼ÎïÌåĞÅÏ¢
+			//å®šä¹‰ä¸€ä¸ªIPCobj ç”¨äºè®°å½•ç‰©ä½“ä¿¡æ¯
 			IPCobj newobj;
 			newobj.cls = IPCobj::Robot;
 			newobj.ID = idsx[i];
 			newobj.dimension = 3;
-			//¿ªÊ¼½øĞĞ×ø±ê×ª»¯
-			Mat Pw; //´æ´¢ÎïÌåÊÀ½ç×ø±ê
+			//å¼€å§‹è¿›è¡Œåæ ‡è½¬åŒ–
+			Mat Pw; //å­˜å‚¨ç‰©ä½“ä¸–ç•Œåæ ‡
 			Mat TsVec = Mat(tvecsx[i], true);
-			Pw = IPC[IPCindex].RwMatrixI*(TsVec - IPC[IPCindex].TwVec);//¹«Ê½
-			if (Pw.rows==3&&Pw.cols==1)//Èç¹ûÕıÈ·¾Í×ª»¯µ½coordinate3D
+			Pw = IPC[IPCindex].RwMatrixI*(TsVec - IPC[IPCindex].TwVec);//å…¬å¼
+			if (Pw.rows==3&&Pw.cols==1)//å¦‚æœæ­£ç¡®å°±è½¬åŒ–åˆ°coordinate3D
 			{
 				newobj.coordinate3D = Pw;//?????
 			}
-			Mat rw; //´æ´¢ÎïÌå·½Ïò
-			Mat Rs;//´æ´¢ÎïÌåĞı×ª¾ØÕó
+			Mat rw; //å­˜å‚¨ç‰©ä½“æ–¹å‘
+			Mat Rs;//å­˜å‚¨ç‰©ä½“æ—‹è½¬çŸ©é˜µ
 			Mat re = Mat(Vec3d(1, 0, 0), true);;//
 			Rodrigues(rvecsx[i], Rs);
-			rw = IPC[IPCindex].RwMatrixI*Rs*re;//¹«Ê½
-			if (rw.rows == 3 && rw.cols == 1)//Èç¹ûÕıÈ·¾Í×ª»¯µ½direction3D
+			rw = IPC[IPCindex].RwMatrixI*Rs*re;//å…¬å¼
+			if (rw.rows == 3 && rw.cols == 1)//å¦‚æœæ­£ç¡®å°±è½¬åŒ–åˆ°direction3D
 			{
 				newobj.direction3D = rw;//?????
 			}
@@ -571,43 +566,43 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex)
 		}
 
 		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
-		//Ñ¡È¡´óºÅ»úÆ÷ÈËµÄidºÍ½ÇµãÎ»ÖÃ
+		//é€‰å–å¤§å·æœºå™¨äººçš„idå’Œè§’ç‚¹ä½ç½®
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[0][0] && ids[i] <= AR_ID_distribList[0][1])
 			{
-				//ÕÒµ½ÁË´óºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å¤§å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
 		if (idsx.size() > 0)
 		{
-			//¶ÔÕâĞ©»úÆ÷ÈË½øĞĞ×ËÌ¬¹À¼Æ
+			//å¯¹è¿™äº›æœºå™¨äººè¿›è¡Œå§¿æ€ä¼°è®¡
 			cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[0][2] / 1000.0, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx, tvecsx);
 
-			//µÃµ½ÕâĞ©»úÆ÷ÈËÊÀ½ç×ø±êÏµ×ø±ê
+			//å¾—åˆ°è¿™äº›æœºå™¨äººä¸–ç•Œåæ ‡ç³»åæ ‡
 			for (size_t i = 0; i < idsx.size(); i++)
 			{
-				//¶¨ÒåÒ»¸öIPCobj ÓÃÓÚ¼ÇÂ¼ÎïÌåĞÅÏ¢
+				//å®šä¹‰ä¸€ä¸ªIPCobj ç”¨äºè®°å½•ç‰©ä½“ä¿¡æ¯
 				IPCobj newobj;
 				newobj.cls = IPCobj::Robot;
 				newobj.ID = idsx[i];
 				newobj.dimension = 3;
-				//¿ªÊ¼½øĞĞ×ø±ê×ª»¯
-				Mat Pw; //´æ´¢ÎïÌåÊÀ½ç×ø±ê
+				//å¼€å§‹è¿›è¡Œåæ ‡è½¬åŒ–
+				Mat Pw; //å­˜å‚¨ç‰©ä½“ä¸–ç•Œåæ ‡
 				Mat TsVec = Mat(tvecsx[i], true);
-				Pw = IPC[IPCindex].RwMatrixI*(TsVec - IPC[IPCindex].TwVec);//¹«Ê½
-				if (Pw.rows == 3 && Pw.cols == 1)//Èç¹ûÕıÈ·¾Í×ª»¯µ½coordinate3D
+				Pw = IPC[IPCindex].RwMatrixI*(TsVec - IPC[IPCindex].TwVec);//å…¬å¼
+				if (Pw.rows == 3 && Pw.cols == 1)//å¦‚æœæ­£ç¡®å°±è½¬åŒ–åˆ°coordinate3D
 				{
 					newobj.coordinate3D = Pw;//?????
 				}
-				Mat rw; //´æ´¢ÎïÌå·½Ïò
-				Mat Rs;//´æ´¢ÎïÌåĞı×ª¾ØÕó
+				Mat rw; //å­˜å‚¨ç‰©ä½“æ–¹å‘
+				Mat Rs;//å­˜å‚¨ç‰©ä½“æ—‹è½¬çŸ©é˜µ
 				Mat re = Mat(Vec3d(1, 0, 0), true);;//
 				Rodrigues(rvecsx[i], Rs);
-				rw = IPC[IPCindex].RwMatrixI*Rs*re;//¹«Ê½
-				if (rw.rows == 3 && rw.cols == 1)//Èç¹ûÕıÈ·¾Í×ª»¯µ½direction3D
+				rw = IPC[IPCindex].RwMatrixI*Rs*re;//å…¬å¼
+				if (rw.rows == 3 && rw.cols == 1)//å¦‚æœæ­£ç¡®å°±è½¬åŒ–åˆ°direction3D
 				{
 					newobj.direction3D = rw;//?????
 				}
@@ -622,16 +617,16 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex)
 
 
 /*
-@brief:ÒÔÒ»ÕÅÀ´×ÔIPCµÄÍ¼Æ¬À´¶¨Î»Í¼ÖĞµÄARÂë£¬·µ»ØÊÀ½ç3D×ø±ê,Í¬Ê±·µ»ØÒ»¸ö»æÖÆÍ¼Æ¬
+@brief:ä»¥ä¸€å¼ æ¥è‡ªIPCçš„å›¾ç‰‡æ¥å®šä½å›¾ä¸­çš„ARç ï¼Œè¿”å›ä¸–ç•Œ3Dåæ ‡,åŒæ—¶è¿”å›ä¸€ä¸ªç»˜åˆ¶å›¾ç‰‡
 */
 std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex, Mat &outimg)
 {
 	std::vector<IPCobj> retobj;
 
-	//¿ªÊ¼¶¨Î»
-	//´æ´¢ËùÓĞidºÅ
+	//å¼€å§‹å®šä½
+	//å­˜å‚¨æ‰€æœ‰idå·
 	vector<int> ids;
-	//´æ´¢ËùÓĞ½Çµã
+	//å­˜å‚¨æ‰€æœ‰è§’ç‚¹
 	vector<vector<Point2f> > corners;
 
 	Mat imageCopy;
@@ -645,51 +640,51 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex, Mat &outimg)
 	if (ids.size() > 0)
 	{
 
-		vector< Vec3d > rvecsx, tvecsx;		//´æ´¢Ğ¡ºÅ»úÆ÷ÈËµÄ×ËÌ¬
-		vector<int> idsx;					//´¢´æĞ¡ºÅ»úÆ÷ÈËµÄID
-		vector<vector<Point2f> > cornersx;	//´¢´æĞ¡ºÅ»úÆ÷ÈËµÄ½Çµã
+		vector< Vec3d > rvecsx, tvecsx;		//å­˜å‚¨å°å·æœºå™¨äººçš„å§¿æ€
+		vector<int> idsx;					//å‚¨å­˜å°å·æœºå™¨äººçš„ID
+		vector<vector<Point2f> > cornersx;	//å‚¨å­˜å°å·æœºå™¨äººçš„è§’ç‚¹
 
-		//**Ñ¡È¡Ğ¡ºÅ»úÆ÷ÈËµÄidºÍ½ÇµãÎ»ÖÃ
+		//**é€‰å–å°å·æœºå™¨äººçš„idå’Œè§’ç‚¹ä½ç½®
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[1][0] && ids[i] <= AR_ID_distribList[1][1])
 			{
-				//ÕÒµ½ÁËĞ¡ºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å°å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
 		if (idsx.size() > 0)
 		{
-			//¶ÔÕâĞ©Ğ¡ºÅ»úÆ÷ÈË½øĞĞ×ËÌ¬¹À¼Æ
+			//å¯¹è¿™äº›å°å·æœºå™¨äººè¿›è¡Œå§¿æ€ä¼°è®¡
 			cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[1][2] / 1000.0, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx, tvecsx);
 		
-			//»­»­
+			//ç”»ç”»
 			cv::aruco::drawDetectedMarkers(outimg, cornersx, idsx);
 			for (int j = 0; j < idsx.size(); j++)
 				cv::aruco::drawAxis(outimg, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx[j], tvecsx[j], 0.1);
-			//µÃµ½ÕâĞ©Ğ¡ºÅ»úÆ÷ÈËÊÀ½ç×ø±êÏµ×ø±ê
+			//å¾—åˆ°è¿™äº›å°å·æœºå™¨äººä¸–ç•Œåæ ‡ç³»åæ ‡
 			for (size_t i = 0; i < idsx.size(); i++)
 			{
-				//¶¨ÒåÒ»¸öIPCobj ÓÃÓÚ¼ÇÂ¼ÎïÌåĞÅÏ¢
+				//å®šä¹‰ä¸€ä¸ªIPCobj ç”¨äºè®°å½•ç‰©ä½“ä¿¡æ¯
 				IPCobj newobj;
 				newobj.cls = IPCobj::Robot;
 				newobj.ID = idsx[i];
 				newobj.dimension = 3;
-				//¿ªÊ¼½øĞĞ×ø±ê×ª»¯
-				Mat Pw; //´æ´¢ÎïÌåÊÀ½ç×ø±ê
+				//å¼€å§‹è¿›è¡Œåæ ‡è½¬åŒ–
+				Mat Pw; //å­˜å‚¨ç‰©ä½“ä¸–ç•Œåæ ‡
 				Mat TsVec = Mat(tvecsx[i], true);
-				Pw = IPC[IPCindex].RwMatrixI*(TsVec - IPC[IPCindex].TwVec);//¹«Ê½
-				if (Pw.rows == 3 && Pw.cols == 1)//Èç¹ûÕıÈ·¾Í×ª»¯µ½coordinate3D
+				Pw = IPC[IPCindex].RwMatrixI*(TsVec - IPC[IPCindex].TwVec);//å…¬å¼
+				if (Pw.rows == 3 && Pw.cols == 1)//å¦‚æœæ­£ç¡®å°±è½¬åŒ–åˆ°coordinate3D
 				{
 					newobj.coordinate3D = Pw;//?????
 				}
-				Mat rw; //´æ´¢ÎïÌå·½Ïò
-				Mat Rs;//´æ´¢ÎïÌåĞı×ª¾ØÕó
+				Mat rw; //å­˜å‚¨ç‰©ä½“æ–¹å‘
+				Mat Rs;//å­˜å‚¨ç‰©ä½“æ—‹è½¬çŸ©é˜µ
 				Mat re = Mat(Vec3d(1, 0, 0), true);;//
 				Rodrigues(rvecsx[i], Rs);
-				rw = IPC[IPCindex].RwMatrixI*Rs*re;//¹«Ê½
-				if (rw.rows == 3 && rw.cols == 1)//Èç¹ûÕıÈ·¾Í×ª»¯µ½direction3D
+				rw = IPC[IPCindex].RwMatrixI*Rs*re;//å…¬å¼
+				if (rw.rows == 3 && rw.cols == 1)//å¦‚æœæ­£ç¡®å°±è½¬åŒ–åˆ°direction3D
 				{
 					newobj.direction3D = rw;//?????
 				}
@@ -698,47 +693,47 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex, Mat &outimg)
 		}
 
 		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
-		//**Ñ¡È¡´óºÅ»úÆ÷ÈËµÄidºÍ½ÇµãÎ»ÖÃ
+		//**é€‰å–å¤§å·æœºå™¨äººçš„idå’Œè§’ç‚¹ä½ç½®
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[0][0] && ids[i] <= AR_ID_distribList[0][1])
 			{
-				//ÕÒµ½ÁË´óºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å¤§å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
 		if (idsx.size() > 0)
 		{
-			//¶ÔÕâĞ©»úÆ÷ÈË½øĞĞ×ËÌ¬¹À¼Æ
+			//å¯¹è¿™äº›æœºå™¨äººè¿›è¡Œå§¿æ€ä¼°è®¡
 			cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[0][2] / 1000.0, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx, tvecsx);
 
-			//»­»­
+			//ç”»ç”»
 			cv::aruco::drawDetectedMarkers(outimg, cornersx, idsx);
 			for (int i = 0; i < idsx.size(); i++)
 				cv::aruco::drawAxis(outimg, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx[i], tvecsx[i], 0.1);
-			//µÃµ½ÕâĞ©Ğ¡ºÅ»úÆ÷ÈËÊÀ½ç×ø±êÏµ×ø±ê
+			//å¾—åˆ°è¿™äº›å°å·æœºå™¨äººä¸–ç•Œåæ ‡ç³»åæ ‡
 			for (size_t i = 0; i < idsx.size(); i++)
 			{
-				//¶¨ÒåÒ»¸öIPCobj ÓÃÓÚ¼ÇÂ¼ÎïÌåĞÅÏ¢
+				//å®šä¹‰ä¸€ä¸ªIPCobj ç”¨äºè®°å½•ç‰©ä½“ä¿¡æ¯
 				IPCobj newobj;
 				newobj.cls = IPCobj::Robot;
 				newobj.ID = idsx[i];
 				newobj.dimension = 3;
-				//¿ªÊ¼½øĞĞ×ø±ê×ª»¯
-				Mat Pw; //´æ´¢ÎïÌåÊÀ½ç×ø±ê
+				//å¼€å§‹è¿›è¡Œåæ ‡è½¬åŒ–
+				Mat Pw; //å­˜å‚¨ç‰©ä½“ä¸–ç•Œåæ ‡
 				Mat TsVec = Mat(tvecsx[i], true);
-				Pw = IPC[IPCindex].RwMatrixI*(TsVec - IPC[IPCindex].TwVec);//¹«Ê½
-				if (Pw.rows == 3 && Pw.cols == 1)//Èç¹ûÕıÈ·¾Í×ª»¯µ½coordinate3D
+				Pw = IPC[IPCindex].RwMatrixI*(TsVec - IPC[IPCindex].TwVec);//å…¬å¼
+				if (Pw.rows == 3 && Pw.cols == 1)//å¦‚æœæ­£ç¡®å°±è½¬åŒ–åˆ°coordinate3D
 				{
 					newobj.coordinate3D = Pw;//?????
 				}
-				Mat rw; //´æ´¢ÎïÌå·½Ïò
-				Mat Rs;//´æ´¢ÎïÌåĞı×ª¾ØÕó
+				Mat rw; //å­˜å‚¨ç‰©ä½“æ–¹å‘
+				Mat Rs;//å­˜å‚¨ç‰©ä½“æ—‹è½¬çŸ©é˜µ
 				Mat re = Mat(Vec3d(1, 0, 0), true);;//
 				Rodrigues(rvecsx[i], Rs);
-				rw = IPC[IPCindex].RwMatrixI*Rs*re;//¹«Ê½
-				if (rw.rows == 3 && rw.cols == 1)//Èç¹ûÕıÈ·¾Í×ª»¯µ½direction3D
+				rw = IPC[IPCindex].RwMatrixI*Rs*re;//å…¬å¼
+				if (rw.rows == 3 && rw.cols == 1)//å¦‚æœæ­£ç¡®å°±è½¬åŒ–åˆ°direction3D
 				{
 					newobj.direction3D = rw;//?????
 				}
@@ -748,22 +743,22 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex, Mat &outimg)
 
 
 		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
-		//Ñ¡È¡ARTAG
+		//é€‰å–ARTAG
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i]== worldAR_ID)
 			{
-				//ÕÒµ½ÁË´óºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å¤§å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
 		if (idsx.size() > 0)
 		{
-			//¶ÔÕâĞ©»úÆ÷ÈË½øĞĞ×ËÌ¬¹À¼Æ
+			//å¯¹è¿™äº›æœºå™¨äººè¿›è¡Œå§¿æ€ä¼°è®¡
 			cv::aruco::estimatePoseSingleMarkers(cornersx, worldAR_size, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx, tvecsx);
 
-			//»­»­
+			//ç”»ç”»
 			cv::aruco::drawDetectedMarkers(outimg, cornersx, idsx);
 			for (int i = 0; i < idsx.size(); i++)
 				cv::aruco::drawAxis(outimg, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx[i], tvecsx[i], 0.5);
@@ -775,7 +770,7 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex, Mat &outimg)
 }
 
 /*
-@brief:ÒÔIPCindexºÅIPÏà»úÅÄÉãµ½µÄ»­ÃæÀ´¶¨Î»ARÂë£¬·µ»ØÊÀ½ç3D×ø±ê
+@brief:ä»¥IPCindexå·IPç›¸æœºæ‹æ‘„åˆ°çš„ç”»é¢æ¥å®šä½ARç ï¼Œè¿”å›ä¸–ç•Œ3Dåæ ‡
 */
 std::vector<IPCobj> IPClocation::location(int IPCindex)
 {
@@ -787,7 +782,7 @@ std::vector<IPCobj> IPClocation::location(int IPCindex)
 }
 
 /*
-*@brief£ºµÃµ½Ö¸¶¨IPC±àºÅµÄÍ¼Ïñ
+*@briefï¼šå¾—åˆ°æŒ‡å®šIPCç¼–å·çš„å›¾åƒ
 */
 Mat IPClocation::getIPCimage(int index)
 {
@@ -797,16 +792,16 @@ Mat IPClocation::getIPCimage(int index)
 }
 
 /*
-@brief:ÒÔÒ»ÕÅÀ´×ÔIPCµÄÍ¼Æ¬À´¶¨Î»Í¼ÖĞµÄARÂë£¬·µ»ØÏà»ú×ø±ê
+@brief:ä»¥ä¸€å¼ æ¥è‡ªIPCçš„å›¾ç‰‡æ¥å®šä½å›¾ä¸­çš„ARç ï¼Œè¿”å›ç›¸æœºåæ ‡
 */
 std::vector<IPCobj> IPClocation::locationMat(Mat img, int IPCindex)
 {
 	std::vector<IPCobj> retobj;
 
-	//¿ªÊ¼¶¨Î»
-	//´æ´¢ËùÓĞidºÅ
+	//å¼€å§‹å®šä½
+	//å­˜å‚¨æ‰€æœ‰idå·
 	vector<int> ids;
-	//´æ´¢ËùÓĞ½Çµã
+	//å­˜å‚¨æ‰€æœ‰è§’ç‚¹
 	vector<vector<Point2f> > corners;
 
 	Mat imageCopy;
@@ -820,28 +815,28 @@ std::vector<IPCobj> IPClocation::locationMat(Mat img, int IPCindex)
 	if (ids.size() > 0)
 	{
 
-		vector<int> idsx;					//´¢´æĞ¡ºÅ»úÆ÷ÈËµÄID
-		vector<vector<Point2f> > cornersx;	//´¢´æĞ¡ºÅ»úÆ÷ÈËµÄ½Çµã
+		vector<int> idsx;					//å‚¨å­˜å°å·æœºå™¨äººçš„ID
+		vector<vector<Point2f> > cornersx;	//å‚¨å­˜å°å·æœºå™¨äººçš„è§’ç‚¹
 
-		//Ñ¡È¡Ğ¡ºÅ»úÆ÷ÈËµÄidºÍ½ÇµãÎ»ÖÃ
+		//é€‰å–å°å·æœºå™¨äººçš„idå’Œè§’ç‚¹ä½ç½®
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[1][0] && ids[i] <= AR_ID_distribList[1][1])
 			{
-				//ÕÒµ½ÁËĞ¡ºÅ»úÆ÷ÈËid
+				//æ‰¾åˆ°äº†å°å·æœºå™¨äººid
 				idsx.push_back(ids[i]);
 				cornersx.push_back(corners[i]);
 			}
 		}
-		//µÃµ½ÕâĞ©Ğ¡ºÅ»úÆ÷ÈËÏà»ú×ø±ê
+		//å¾—åˆ°è¿™äº›å°å·æœºå™¨äººç›¸æœºåæ ‡
 		for (size_t i = 0; i < idsx.size(); i++)
 		{
-			//¶¨ÒåÒ»¸öIPCobj ÓÃÓÚ¼ÇÂ¼ÎïÌåĞÅÏ¢
+			//å®šä¹‰ä¸€ä¸ªIPCobj ç”¨äºè®°å½•ç‰©ä½“ä¿¡æ¯
 			IPCobj newobj;
 			newobj.cls = IPCobj::Robot;
 			newobj.ID = idsx[i];
 			newobj.dimension = 2;
-			//¿ªÊ¼½øĞĞ×ø±ê×ª»¯
+			//å¼€å§‹è¿›è¡Œåæ ‡è½¬åŒ–
 			newobj.coordinate2D = calculateCentre(cornersx[i]);
 
 			retobj.push_back(newobj);
@@ -877,37 +872,37 @@ Point2i IPClocation::calculateCentre(vector<Point2f> corner)
 
 bool IPClocation::AddIPC(std::vector<Mat> img, cv::Size board_size, cv::Size square_size, cv::String rtsp, double err_th )
 {
-	//²é¿´ÊÇ·ñÓĞrtspÖØ¸´£¬ÓĞÔò·µ»Ø´íÎó
+	//æŸ¥çœ‹æ˜¯å¦æœ‰rtspé‡å¤ï¼Œæœ‰åˆ™è¿”å›é”™è¯¯
 	vector<string> allipcrtsp = getIPCrtsp();
 	if (zfun::findVecterElm(allipcrtsp, rtsp) != -1)
 	{
-		printf("error:IPCÖĞ´æÔÚÏàÍ¬rtspµØÖ·µÄIPÏà»ú");
+		printf("error:IPCä¸­å­˜åœ¨ç›¸åŒrtspåœ°å€çš„IPç›¸æœº");
 		return false;
 	}
 
-	//±ê¶¨½á¹û
+	//æ ‡å®šç»“æœ
 	Mat cameraMatrix;
 	Mat distCoeffs;
 	vector<Mat> rvecsMat;
 	vector<Mat> tvecsMat;
 
-	int image_count = 0;                                            // Í¼ÏñÊıÁ¿ 
-	Size image_size;                                                // Í¼ÏñµÄ³ß´ç 
+	int image_count = 0;                                            // å›¾åƒæ•°é‡ 
+	Size image_size;                                                // å›¾åƒçš„å°ºå¯¸ 
 
-	std::vector<Point2f> image_points;                              // »º´æÃ¿·ùÍ¼ÏñÉÏ¼ì²âµ½µÄ½Çµã
-	std::vector<std::vector<Point2f>> image_points_seq;             // ±£´æ¼ì²âµ½µÄËùÓĞ½Çµã
+	std::vector<Point2f> image_points;                              // ç¼“å­˜æ¯å¹…å›¾åƒä¸Šæ£€æµ‹åˆ°çš„è§’ç‚¹
+	std::vector<std::vector<Point2f>> image_points_seq;             // ä¿å­˜æ£€æµ‹åˆ°çš„æ‰€æœ‰è§’ç‚¹
 
 
 
-	//¼ì²â½Çµã
+	//æ£€æµ‹è§’ç‚¹
 	for (int i = 0; i < img.size(); i++)
 	{
 		image_count++;
 
-		// ÓÃÓÚ¹Û²ì¼ìÑéÊä³ö
+		// ç”¨äºè§‚å¯Ÿæ£€éªŒè¾“å‡º
 		cout << "image_count = " << image_count << endl;
 		Mat imageInput = img[i];
-		if (image_count == 1)  //¶ÁÈëµÚÒ»ÕÅÍ¼Æ¬Ê±»ñÈ¡Í¼Ïñ¿í¸ßĞÅÏ¢
+		if (image_count == 1)  //è¯»å…¥ç¬¬ä¸€å¼ å›¾ç‰‡æ—¶è·å–å›¾åƒå®½é«˜ä¿¡æ¯
 		{
 			image_size.width = imageInput.cols;
 			image_size.height = imageInput.rows;
@@ -915,11 +910,11 @@ bool IPClocation::AddIPC(std::vector<Mat> img, cv::Size board_size, cv::Size squ
 			cout << "image_size.height = " << image_size.height << endl;
 		}
 
-		/* ÌáÈ¡½Çµã */
+		/* æå–è§’ç‚¹ */
 		bool ok = findChessboardCorners(imageInput, board_size, image_points, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE);
 		if (0 == ok)
 		{
-			cout << "µÚ" << image_count << "ÕÅÕÕÆ¬ÌáÈ¡½ÇµãÊ§°Ü£¬ÇëÉ¾³ıºó£¬ÖØĞÂ±ê¶¨£¡" << endl; //ÕÒ²»µ½½Çµã
+			cout << "ç¬¬" << image_count << "å¼ ç…§ç‰‡æå–è§’ç‚¹å¤±è´¥ï¼Œè¯·åˆ é™¤åï¼Œé‡æ–°æ ‡å®šï¼" << endl; //æ‰¾ä¸åˆ°è§’ç‚¹
 
 			return false;
 		}
@@ -929,24 +924,24 @@ bool IPClocation::AddIPC(std::vector<Mat> img, cv::Size board_size, cv::Size squ
 			cout << "imageInput.channels()=" << imageInput.channels() << endl;
 			cvtColor(imageInput, view_gray, CV_RGB2GRAY);
 
-			/* ÑÇÏñËØ¾«È·»¯ */
-			//find4QuadCornerSubpix(view_gray, image_points, Size(5, 5)); //¶Ô´ÖÌáÈ¡µÄ½Çµã½øĞĞ¾«È·»¯
+			/* äºšåƒç´ ç²¾ç¡®åŒ– */
+			//find4QuadCornerSubpix(view_gray, image_points, Size(5, 5)); //å¯¹ç²—æå–çš„è§’ç‚¹è¿›è¡Œç²¾ç¡®åŒ–
 			cv::cornerSubPix(view_gray, image_points, cv::Size(11, 11), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 20, 0.01));
 
-			image_points_seq.push_back(image_points);  //±£´æÑÇÏñËØ½Çµã
+			image_points_seq.push_back(image_points);  //ä¿å­˜äºšåƒç´ è§’ç‚¹
 
-													   /* ÔÚÍ¼ÏñÉÏÏÔÊ¾½ÇµãÎ»ÖÃ */
+													   /* åœ¨å›¾åƒä¸Šæ˜¾ç¤ºè§’ç‚¹ä½ç½® */
 			drawChessboardCorners(view_gray, board_size, image_points, true);
 
-			//imshow("Camera Calibration", view_gray);//ÏÔÊ¾Í¼Æ¬
-			//waitKey(100);//ÔİÍ£0.1S     
+			//imshow("Camera Calibration", view_gray);//æ˜¾ç¤ºå›¾ç‰‡
+			//waitKey(100);//æš‚åœ0.1S     
 		}
 	}
-	cout << "½ÇµãÌáÈ¡Íê³É£¡£¡£¡" << endl;
+	cout << "è§’ç‚¹æå–å®Œæˆï¼ï¼ï¼" << endl;
 
 
-	/*ÆåÅÌÈıÎ¬ĞÅÏ¢*/
-	vector<vector<Point3f>> object_points_seq;                     // ±£´æ±ê¶¨°åÉÏ½ÇµãµÄÈıÎ¬×ø±ê
+	/*æ£‹ç›˜ä¸‰ç»´ä¿¡æ¯*/
+	vector<vector<Point3f>> object_points_seq;                     // ä¿å­˜æ ‡å®šæ¿ä¸Šè§’ç‚¹çš„ä¸‰ç»´åæ ‡
 	for (int t = 0; t < image_count; t++)
 	{
 		vector<Point3f> object_points;
@@ -955,7 +950,7 @@ bool IPClocation::AddIPC(std::vector<Mat> img, cv::Size board_size, cv::Size squ
 			for (int j = 0; j < board_size.width; j++)
 			{
 				Point3f realPoint;
-				/* ¼ÙÉè±ê¶¨°å·ÅÔÚÊÀ½ç×ø±êÏµÖĞz=0µÄÆ½ÃæÉÏ */
+				/* å‡è®¾æ ‡å®šæ¿æ”¾åœ¨ä¸–ç•Œåæ ‡ç³»ä¸­z=0çš„å¹³é¢ä¸Š */
 				realPoint.x = i*square_size.width;
 				realPoint.y = j*square_size.height;
 				realPoint.z = 0;
@@ -965,27 +960,27 @@ bool IPClocation::AddIPC(std::vector<Mat> img, cv::Size board_size, cv::Size squ
 		object_points_seq.push_back(object_points);
 	}
 
-	/* ÔËĞĞ±ê¶¨º¯Êı */
+	/* è¿è¡Œæ ‡å®šå‡½æ•° */
 
 	double err_first = calibrateCamera(object_points_seq, image_points_seq, image_size, cameraMatrix, distCoeffs, rvecsMat, tvecsMat, CV_CALIB_FIX_K3);
-	cout << "ÖØÍ¶Ó°Îó²î1£º" << err_first << "ÏñËØ" << endl << endl;
-	cout << "±ê¶¨Íê³É£¡£¡£¡" << endl;
+	cout << "é‡æŠ•å½±è¯¯å·®1ï¼š" << err_first << "åƒç´ " << endl << endl;
+	cout << "æ ‡å®šå®Œæˆï¼ï¼ï¼" << endl;
 
-	//Èç¹ûÎó²îÌ«´ó£¬Ôò·µ»Ø´íÎó
+	//å¦‚æœè¯¯å·®å¤ªå¤§ï¼Œåˆ™è¿”å›é”™è¯¯
 	if (err_first > err_th)
 	{
-		printf("error:Îó²îÌ«´ó");
+		printf("error:è¯¯å·®å¤ªå¤§");
 		return false;
 	}
 
 
-	//Ìí¼ÓIPC
+	//æ·»åŠ IPC
 	IPCmsg newIPC(rtsp);
 	newIPC.cameraMatrix = cameraMatrix;
 	newIPC.distCoeffs = distCoeffs;
 	IPC.push_back(newIPC);
 
-	//±£´æ¶¨±ê½á¹û    
+	//ä¿å­˜å®šæ ‡ç»“æœ    
 	UpdateXMLfile();
 
 	return true;
@@ -993,27 +988,27 @@ bool IPClocation::AddIPC(std::vector<Mat> img, cv::Size board_size, cv::Size squ
 
 std::vector<IPCobj> IPClocation::calculateAllObjection(std::vector<std::vector<IPCobj>> eobj)
 {
-	//¼ì²âÊäÈë²ÎÊıºÏÀíĞÔ£¨ex£ºÍ¬Ò»¸öIPCÏÂ¿´µ½ÁË¶à¸öIDÏàÍ¬µÄ»úÆ÷ÈË£©
+	//æ£€æµ‹è¾“å…¥å‚æ•°åˆç†æ€§ï¼ˆexï¼šåŒä¸€ä¸ªIPCä¸‹çœ‹åˆ°äº†å¤šä¸ªIDç›¸åŒçš„æœºå™¨äººï¼‰
 
-	//ÕÒrobot£¬²¢ÇÒÕûºÏ
-	vector<uint8_t> robotID;//ÕÒµ½ÁËÄÇĞ©robotID
-	vector<vector<Vec2i>> fIPCindex;//ÕâĞ©robotID¶¼³öÏÖÔÚÄÄ¸öIPCÀï,²¢ÇÒÊÇÔÚÕâ¸öIPCÀïµÄµÚ¼¸¸öĞòºÅ
+	//æ‰¾robotï¼Œå¹¶ä¸”æ•´åˆ
+	vector<uint8_t> robotID;//æ‰¾åˆ°äº†é‚£äº›robotID
+	vector<vector<Vec2i>> fIPCindex;//è¿™äº›robotIDéƒ½å‡ºç°åœ¨å“ªä¸ªIPCé‡Œ,å¹¶ä¸”æ˜¯åœ¨è¿™ä¸ªIPCé‡Œçš„ç¬¬å‡ ä¸ªåºå·
 
-	//±éÀúeobj
+	//éå†eobj
 	for (size_t i = 0; i < eobj.size(); i++)
 	{
 		for (size_t j = 0; j < eobj[i].size(); j++)
 		{
-			//ÅĞ¶ÏÕâ¸öIPCOBJÊÇ²»ÊÇrobot
+			//åˆ¤æ–­è¿™ä¸ªIPCOBJæ˜¯ä¸æ˜¯robot
 			if (eobj[i][j].cls == IPCobj::Robot)
 			{
-				//²é¿´Õâ¸örobotidÊÇ·ñÓĞÈëÕ»¹ı
+				//æŸ¥çœ‹è¿™ä¸ªrobotidæ˜¯å¦æœ‰å…¥æ ˆè¿‡
 				int samIDindex = zfun::findVecterElm(robotID, eobj[i][j].ID);	
-				if (samIDindex == -1)//·ñ
+				if (samIDindex == -1)//å¦
 				{
 					robotID.push_back(eobj[i][j].ID);
 					Vec2i x; x[0] = i; x[1] = j;
-					vector<Vec2i> newindex; newindex.push_back(x);//µÚi¸öIPC³öÏÖÁËĞÂrobotID
+					vector<Vec2i> newindex; newindex.push_back(x);//ç¬¬iä¸ªIPCå‡ºç°äº†æ–°robotID
 					fIPCindex.push_back(newindex);
 				}
 				else
@@ -1025,10 +1020,10 @@ std::vector<IPCobj> IPClocation::calculateAllObjection(std::vector<std::vector<I
 		}
 	}
 
-	//Õë¶Ô»úÆ÷ÈË¿ªÊ¼ÕûºÏĞÂµÄIPCobj
+	//é’ˆå¯¹æœºå™¨äººå¼€å§‹æ•´åˆæ–°çš„IPCobj
 	vector<IPCobj> retobj;
 
-	if (Algorithm == 0)//È·ÈÏËã·¨
+	if (Algorithm == 0)//ç¡®è®¤ç®—æ³•
 	{
 		for (size_t i = 0; i < robotID.size(); i++)
 		{
@@ -1038,7 +1033,7 @@ std::vector<IPCobj> IPClocation::calculateAllObjection(std::vector<std::vector<I
 			newobj.cls = IPCobj::Robot;
 			newobj.coordinate3D[0] = 0; newobj.coordinate3D[1] = 0; newobj.coordinate3D[2] = 0;
 			newobj.direction3D[0] = 0; newobj.direction3D[1] = 0; newobj.direction3D[2] = 0;
-			//±éÀú¸ÃrobotIDËùÓĞµÄIPC,²¢ÇÒÆ½¾ù×ø±ê
+			//éå†è¯¥robotIDæ‰€æœ‰çš„IPC,å¹¶ä¸”å¹³å‡åæ ‡
 			for (size_t j = 0; j < fIPCindex[i].size(); j++)
 			{
 				
@@ -1061,24 +1056,19 @@ std::vector<IPCobj> IPClocation::calculateAllObjection(std::vector<std::vector<I
 }
 
 
-bool IPClocation::cmp(Point2d &s1, Point2d &s2)
-{
-	return s1.y > s2.y;
-}
-
-//»­±íÊ¾ÎïÌå·½ÏòµÄ¼ıÍ·
+//ç”»è¡¨ç¤ºç‰©ä½“æ–¹å‘çš„ç®­å¤´
 void IPClocation::drawArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
 	cv::Scalar color, int thickness, int lineType)
 {
 	const double PI = 3.1415926;
 	Point2d arrow;
 
-	//¼ÆËã ¦È ½Ç
+	//è®¡ç®— Î¸ è§’
 	double angle = atan2((double)(oPoint.y - pDirection.y), (double)(oPoint.x - pDirection.x));
 
 	pLocation.x = pLocation.x - sqrt(2) * 4 * cos(angle);
 	pLocation.y = pLocation.y - sqrt(2) * 4 * sin(angle);
-	//¼ÆËã¼ı½Ç±ßµÄÁíÒ»¶ËµÄ¶ËµãÎ»ÖÃ
+	//è®¡ç®—ç®­è§’è¾¹çš„å¦ä¸€ç«¯çš„ç«¯ç‚¹ä½ç½®
 	arrow.x = pLocation.x + len * cos(angle + PI * alpha / 180);
 	arrow.y = pLocation.y + len * sin(angle + PI * alpha / 180);
 	line(img, pLocation, arrow, color, thickness, lineType);
@@ -1087,17 +1077,17 @@ void IPClocation::drawArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDi
 	line(img, pLocation, arrow, color, thickness, lineType);
 }
 
-//»­×ø±êÖáµÄ¼ıÍ·
+//ç”»åæ ‡è½´çš„ç®­å¤´
 void IPClocation::drawCoorArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
 	cv::Scalar color, int thickness , int lineType )
 {
 	const double PI = 3.1415926;
 	Point2d arrow;
 
-	//¼ÆËã ¦È ½Ç
+	//è®¡ç®— Î¸ è§’
 	double angle = atan2((double)(oPoint.y - pDirection.y), (double)(oPoint.x - pDirection.x));
 
-	//¼ÆËã¼ı½Ç±ßµÄÁíÒ»¶ËµÄ¶ËµãÎ»ÖÃ
+	//è®¡ç®—ç®­è§’è¾¹çš„å¦ä¸€ç«¯çš„ç«¯ç‚¹ä½ç½®
 	arrow.x = pLocation.x + len * cos(angle + PI * alpha / 180);
 	arrow.y = pLocation.y + len * sin(angle + PI * alpha / 180);
 	line(img, pLocation, arrow, color, thickness, lineType);
@@ -1136,17 +1126,20 @@ Mat IPClocation::paintObject(vector<IPCobj> input, Point2d center, float scale)
 		points.push_back(Point2d(input[i].coordinate3D[0], input[i].coordinate3D[1]));
 		directions.push_back(Point2d(input[i].direction3D[0], input[i].direction3D[1]));
 	}
-	double rows = center.y * 2; //Í¼Æ¬µÄĞĞ
+	double rows = center.y * 2; //Í¼Æ¬ï¿½ï¿½ï¿½ï¿½
 	double cols = center.x * 2;
 
-	/*if (min(rows, cols) < 10 * scale)
+	if (scale<10)
 	{
-		cout << "Í¼Æ¬µÄ¸ß¿íÌ«Ğ¡,³ÌĞòÍË³ö" << endl;
-		exit(0);
-	}*/
+		scale = 10;
+	}
+	if (scale > 500)
+	{
+		scale = 500;
+	}
 	Mat back(rows, cols, CV_8UC3, Scalar(255, 255, 255));
-	Point2d oPoint = center; //ÖĞĞÄµã×ø±ê
-	vector<Point2d> xPoint; //xÖá×ø±ê
+	Point2d oPoint = center; //ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½
+	vector<Point2d> xPoint; //xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	vector<Point2d> yPoint;
 	for (int i = -5; i <= 5; i++)
 	{
@@ -1157,17 +1150,17 @@ Mat IPClocation::paintObject(vector<IPCobj> input, Point2d center, float scale)
 	{
 		yPoint.push_back(Point2d(oPoint.x, oPoint.y + i * scale));
 	}
-	//sort(yPoint.begin(), yPoint.end(), cmp); //½µĞòÅÅÁĞ
+	reverse(yPoint.begin(), yPoint.end()); //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-	Point2d xEnd = Point2d(xPoint[10].x + 20, xPoint[10].y); //xÖáÖÕµã
-	Point2d yEnd = Point2d(yPoint[10].x, yPoint[10].y - 20); //yÖáÖÕµã
-	line(back, xPoint[0], xEnd, 0); //»­³öxÖá
-	drawCoorArrow(back, xEnd, Point2d(scale * 1 + cols / 2, -scale * 0 + rows / 2), oPoint, 5, 45, Scalar(0, 0, 0), 1);//»­xÖáµÄ¼ıÍ·
+	Point2d xEnd = Point2d(xPoint[10].x + 20, xPoint[10].y); //xï¿½ï¿½ï¿½Õµï¿½
+	Point2d yEnd = Point2d(yPoint[10].x, yPoint[10].y - 20); //yï¿½ï¿½ï¿½Õµï¿½
+	line(back, xPoint[0], xEnd, 0); //ï¿½ï¿½ï¿½ï¿½xï¿½ï¿½
+	drawCoorArrow(back, xEnd, Point2d(scale * 1 + cols / 2, -scale * 0 + rows / 2), oPoint, 5, 45, Scalar(0, 0, 0), 1);//ï¿½ï¿½xï¿½ï¿½Ä¼ï¿½Í·
 
-	line(back, yPoint[0], yEnd, 0);//»­³öyÖá
-	drawCoorArrow(back, yEnd, Point2d(scale * 0 + cols / 2, -scale * 1 + rows / 2), oPoint, 5, 45, Scalar(0, 0, 0), 1);//»­yÖáµÄ¼ıÍ·
+	line(back, yPoint[0], yEnd, 0);//ï¿½ï¿½ï¿½ï¿½yï¿½ï¿½
+	drawCoorArrow(back, yEnd, Point2d(scale * 0 + cols / 2, -scale * 1 + rows / 2), oPoint, 5, 45, Scalar(0, 0, 0), 1);//ï¿½ï¿½yï¿½ï¿½Ä¼ï¿½Í·
 
-																													   //ÏÔÊ¾x£¬yÖáµÄ×ø±êÖµ
+																													   //ï¿½ï¿½Ê¾xï¿½ï¿½yï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
 	char text[11];
 	for (int i = -5; i <= 5; i++)
 	{
@@ -1175,41 +1168,135 @@ Mat IPClocation::paintObject(vector<IPCobj> input, Point2d center, float scale)
 		{
 			continue;
 		}
-		sprintf_s(text, "%d", i); //¸ñÊ½»¯Êä³ö
-		putText(back, text, xPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
+		if (scale <= 20)
+		{
+			if (i % 2 == 1 || i % 2 == -1)
+			{
+				sprintf_s(text, "%d", i); //ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½
+				putText(back, text, xPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.3, Scalar(0, 0, 255));
+			}
+
+		}
+		else
+		{
+			sprintf_s(text, "%d", i); //ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½
+			putText(back, text, xPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
+		}
+
 	}
 	for (int i = -5; i <= 5; i++)
 	{
-		sprintf_s(text, "%d", i);
-		putText(back, text, yPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
+		if (scale <= 20)
+		{
+			if (i % 2 == 1 || i % 2 == -1)
+			{
+				sprintf_s(text, "%d", i); //ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½
+				putText(back, text, yPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.3, Scalar(0, 0, 255));
+			}
+		}
+		else
+		{
+			sprintf_s(text, "%d", i);
+			putText(back, text, yPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
+		}
+
 	}
 
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	for (int i = 0; i < xPoint.size(); i++)
+	{
+		if (scale >= 180)
+		{
+			if (i < xPoint.size() - 1)
+			{
+				line(back, Point2d(xPoint[i].x + 0.25*scale, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x + 0.25*scale, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
+				line(back, Point2d(xPoint[i].x + 0.5*scale, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x + 0.5*scale, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
+				line(back, Point2d(xPoint[i].x + 0.75*scale, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x + 0.75*scale, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
+			}
+			line(back, Point2d(xPoint[i].x, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
+		}
+		if (scale >= 60 && scale<180)
+		{
+			if (i < xPoint.size() - 1)
+			{
+				line(back, Point2d(xPoint[i].x + 0.5*scale, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x + 0.5*scale, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
+			}
+			line(back, Point2d(xPoint[i].x, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
+		}
+		if (scale > 20 && scale <60)
+		{
+			line(back, Point2d(xPoint[i].x, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
+		}
+		if (scale <= 20)
+		{
+			if (i % 2 == 0)
+			{
+				line(back, Point2d(xPoint[i].x, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
+			}
+		}
+	}
+	for (int i = 0; i < yPoint.size(); i++)
+	{
+		if (scale >= 180)
+		{
+			if (i < yPoint.size() - 1)
+			{
+				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y - 0.25*scale), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y - 0.25*scale), Scalar(125, 125, 125), 1);
+				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y - 0.5*scale), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y - 0.5*scale), Scalar(125, 125, 125), 1);
+				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y - 0.75*scale), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y - 0.75*scale), Scalar(125, 125, 125), 1);
+			}
+			line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y), Scalar(125, 125, 125), 1);
+		}
+		if (scale >= 60 && scale< 180)
+		{
+			if (i < yPoint.size() - 1)
+			{
+				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y - 0.5*scale), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y - 0.5*scale), Scalar(125, 125, 125), 1);
+			}
+			line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y), Scalar(125, 125, 125), 1);
+		}
+		if (scale > 20 && scale < 60)
+		{
+			line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y), Scalar(125, 125, 125), 1);
+		}
+		if (scale <= 20)
+		{
+			if (i % 2 == 0)
+			{
+				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y), Scalar(125, 125, 125), 1);
+			}
+		}
+	}
+
+
+
+	//ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½
 	for (int i = 0; i < points.size(); i++)
 	{
 		int id = input[i].ID;
-		//ÏÔÊ¾»úÆ÷ÈËµÄĞÅÏ¢
+		//ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½Ëµï¿½ï¿½ï¿½Ï¢
 		if (input[i].cls == 1)
 		{
-			circle(back, Point2d(scale * points[i].x + cols / 2, -scale * points[i].y + rows / 2), 4, Scalar(0, 0, 255), -1); //ÏÔÊ¾Î»ÖÃ
+			circle(back, Point2d(scale * points[i].x + cols / 2, -scale * points[i].y + rows / 2), 4, Scalar(0, 0, 255), -1); //ï¿½ï¿½Ê¾Î»ï¿½ï¿½
 			drawArrow(back, Point2d(scale * points[i].x + cols / 2, -scale * points[i].y + rows / 2), Point2d(scale * directions[i].x + cols / 2, -scale * directions[i].y + rows / 2),
-				oPoint, 10, 45, Scalar(255, 0, 0)); //ÏÔÊ¾·½Ïò£¬ÓÃ¼ıÍ·±íÊ¾
-													//ÏÔÊ¾id
+				oPoint, 10, 45, Scalar(255, 0, 0)); //ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½Í·ï¿½ï¿½Ê¾
+													//ï¿½ï¿½Ê¾id
 			string str;
 			stringstream ss;
 			ss << id;
 			ss >> str;
 			putText(back, str, Point2d(scale * points[i].x + cols / 2 - 8, -scale * points[i].y + rows / 2 - 10), CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
 		}
-		//ÏÔÊ¾ÆäËûÎïÌåµÄÎ»ÖÃ
+		//ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½
 		else
 		{
 			rectangle(back, Point2d(scale * points[i].x + cols / 2 - 5, -scale * points[i].y + rows / 2 - 5),
-				Point2d(scale * points[i].x + cols / 2 + 5, -scale * points[i].y + rows / 2 + 5), Scalar(0, 255, 0), -1); //ÏÔÊ¾Î»ÖÃ
+				Point2d(scale * points[i].x + cols / 2 + 5, -scale * points[i].y + rows / 2 + 5), Scalar(0, 255, 0), -1); //ï¿½ï¿½Ê¾Î»ï¿½ï¿½
 		}
 	}
 
 	//imshow("back", back);
-	//imwrite("2.jpg", back);
-	//waitKey(0);
+	//imwrite("7.jpg", back);
+	//waitKey(500);
 	return back;
 }

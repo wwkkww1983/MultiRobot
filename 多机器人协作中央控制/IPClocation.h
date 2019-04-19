@@ -4,14 +4,9 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.3
+版  本：beta 0.4
 更  改：
-	1、删除了缓存队列模块类，以及其变量。
-	2、修复setWorld返回总是为false的问题
-	3、添加了delayTime变量，存储定位系统的延时时间。并且加入xml
-	4、添加画坐标点的函数功能（张猛作）。还需要改善，加大可视化。
-	5、为IPCmsg类添加了一个互斥锁，主要保护视频流不同时被多个线程访问。
-	6、公有化UpdateXMLfile等函数。
+1、更新2D地图函数
 */
 
 #pragma once
@@ -161,7 +156,6 @@ private:
 	@brief:画定位坐标系用的函数
 	@author:张猛
 	*/
-	bool cmp(Point2d &s1, Point2d &s2);
 	void drawArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
 		cv::Scalar color, int thickness = 2, int lineType = 8);
 	void drawCoorArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
@@ -293,7 +287,8 @@ public://输出函数接口
 
 	/*
 	*@brief：画出obj
-	@@author:张猛
+	@author:张猛
+	@time:3.4534ms x2700
 	*/
 	Mat paintObject(std::vector<IPCobj> input, Point2d center = Point2d(400, 300), float scale = 50);
 	/*

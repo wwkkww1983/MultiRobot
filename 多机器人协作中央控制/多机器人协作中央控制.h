@@ -41,7 +41,8 @@ public:
 	//config
 	FileStorage config;
 
-	
+	//标志位配置
+	bool show2Dflag = false;//显示2D地图
 
 	DECLARE_MESSAGE_MAP()
 };

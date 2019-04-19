@@ -124,6 +124,8 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON3, &CMultiRobotDlg::OnBnClickedButton3)
 	ON_COMMAND(ID_32777, &CMultiRobotDlg::On32777)
 	ON_COMMAND(ID_32778, &CMultiRobotDlg::On32778)
+	ON_COMMAND(ID_32779, &CMultiRobotDlg::Onshow2Donoff)
+	ON_COMMAND(ID_32771, &CMultiRobotDlg::Onvision)
 END_MESSAGE_MAP()
 
 
@@ -364,7 +366,7 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		theApp.everyIPCobj.push_back(newereyobj);
 	}
 	ReleaseMutex(theApp.visionLSys.hMutex);//解锁
-
+	int showscale = 100;
 	while (theApp.ThreadOn)
 	{
 		//整合obj
@@ -422,11 +424,17 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
 		//显示obj
-		Mat showobj;
-		showobj = theApp.visionLSys.paintObject(theApp.obj,Point(400,300),100);
-		imshow("showobj", showobj);
+		if (theApp.show2Dflag == true)
+		{
+			Mat showobj;
+			showobj = theApp.visionLSys.paintObject(theApp.obj, Point(400, 300), showscale);
+			imshow("showobj", showobj);
+		}
 		int key = waitKey(30);
-
+		if (key == 'i')
+			showscale = showscale + 5;
+		if (key == 'u')
+			showscale = showscale - 5;
 
 	}
 
@@ -936,4 +944,58 @@ void CMultiRobotDlg::printd(string cout)
 	m_printout.SetSel(lastLine + 1, lastLine + 2, 0);
 	m_printout.ReplaceSel(str); //在最后一行添加新的内容
 	UpdateData(false);
+}
+void CMultiRobotDlg::printd(int cout)
+{
+	CString str;
+	str.Format(_T("int:%d"), cout);
+	str += _T("\r\n"); // 回车换行
+	int lastLine = m_printout.LineIndex(m_printout.GetLineCount() - 1);
+	m_printout.SetSel(lastLine + 1, lastLine + 2, 0);
+	m_printout.ReplaceSel(str); //在最后一行添加新的内容
+	UpdateData(false);
+}
+void CMultiRobotDlg::printd(float cout)
+{
+	CString str;
+	str.Format(_T("float:%f"), cout);
+	str += _T("\r\n"); // 回车换行
+	int lastLine = m_printout.LineIndex(m_printout.GetLineCount() - 1);
+	m_printout.SetSel(lastLine + 1, lastLine + 2, 0);
+	m_printout.ReplaceSel(str); //在最后一行添加新的内容
+	UpdateData(false);
+}
+
+//开关显示2D地图
+void CMultiRobotDlg::Onshow2Donoff()
+{
+	// TODO: 在此添加命令处理程序代码
+	if (theApp.show2Dflag == false)
+	{
+		theApp.show2Dflag = true;
+		m_Menu.CheckMenuItem(ID_32779, MF_BYCOMMAND | MF_CHECKED);
+	}
+	else
+	{
+		theApp.show2Dflag = false;
+		m_Menu.CheckMenuItem(ID_32779, MF_BYCOMMAND | MF_UNCHECKED);
+		try
+		{
+			destroyWindow("showobj");
+		}
+		catch (const std::exception&)
+		{
+
+		}
+		
+	}
+	
+}
+
+//弹出产品版本
+void CMultiRobotDlg::Onvision()
+{
+	// TODO: 在此添加命令处理程序代码
+	AfxMessageBox(_T("测试版\n\r v0.5"));
+
 }

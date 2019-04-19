@@ -101,8 +101,13 @@ public:
 	//自定义函数，用于调试输出
 	void printd(CString cout);//输出字符串信息
 	void printd(string cout);//输出字符串信息
+	void printd(int cout);
+	void printd(float cout);
 
-
+	//开关显示2D地图
+	afx_msg void Onshow2Donoff();
+	
+	afx_msg void Onvision();
 };
 
 //核心！！！！！
