@@ -4,9 +4,10 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.4
+版  本：beta 0.5
 更  改：
-1、更新2D地图函数
+	1、地图函数做了修改，可以定义观看位置和尺度
+	
 */
 
 #pragma once
@@ -161,6 +162,9 @@ private:
 	void drawCoorArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
 		cv::Scalar color, int thickness = 2, int lineType = 8);
 
+	Mat map;//用于存储大地图
+	int m2pix = 500;
+
 
 public://输出函数接口
 
@@ -290,7 +294,8 @@ public://输出函数接口
 	@author:张猛
 	@time:3.4534ms x2700
 	*/
-	Mat paintObject(std::vector<IPCobj> input, Point2d center = Point2d(400, 300), float scale = 50);
+	Mat paintObject(std::vector<IPCobj> input, Point2i lookCenter, int scale);
+	void initMap(std::string mapname);//初始化地图
 	/*
 	*@brief：找元素
 	*/

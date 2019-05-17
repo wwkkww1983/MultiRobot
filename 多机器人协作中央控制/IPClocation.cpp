@@ -4,9 +4,10 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.4
+版  本：beta 0.5
 更  改：
-	1、更新2D地图函数
+	1、地图函数做了修改，可以定义观看位置和尺度
+
 */
 
 #include "stdafx.h"
@@ -1115,188 +1116,106 @@ int IPClocation::findVecterElm(vector<IPCobj> vec, uint8_t robotidid)
 }
 
 
+void IPClocation::initMap(std::string mapname)
+{
+	map = imread(mapname);
+}
 
-
-Mat IPClocation::paintObject(vector<IPCobj> input, Point2d center, float scale)
+Mat IPClocation::paintObject(vector<IPCobj> input, Point2i lookCenter, int scale)
 {
 	vector<Point2d> points;
 	vector<Point2d>	directions;
+	Point2i visonxy; visonxy.x = lookCenter.x - scale / 2; visonxy.y = lookCenter.y - scale / 2;
 	for (int i = 0; i < input.size(); i++)
 	{
 		points.push_back(Point2d(input[i].coordinate3D[0], input[i].coordinate3D[1]));
 		directions.push_back(Point2d(input[i].direction3D[0], input[i].direction3D[1]));
 	}
-	double rows = center.y * 2; //ͼƬ����
-	double cols = center.x * 2;
 
-	if (scale<10)
+	if (scale<50)
 	{
-		scale = 10;
+		scale = 50;
 	}
-	if (scale > 500)
+	if (scale > 5000)
 	{
-		scale = 500;
-	}
-	Mat back(rows, cols, CV_8UC3, Scalar(255, 255, 255));
-	Point2d oPoint = center; //���ĵ�����
-	vector<Point2d> xPoint; //x������
-	vector<Point2d> yPoint;
-	for (int i = -5; i <= 5; i++)
-	{
-		xPoint.push_back(Point2d(oPoint.x + i * scale, oPoint.y));
+		scale = 5000;
 	}
 
-	for (int i = -5; i <= 5; i++)
+	Point2d oPoint; oPoint.x = map.cols/2; oPoint.y = map.rows/2;//读取地图的中心点坐标
+
+
+	//截取rect
+	Rect rect(visonxy.x, visonxy.y, scale, scale);
+	Mat retcap;
+	map(rect).copyTo(retcap);
+
+	//画栅格
+	if (scale <= 100)
 	{
-		yPoint.push_back(Point2d(oPoint.x, oPoint.y + i * scale));
-	}
-	reverse(yPoint.begin(), yPoint.end()); //��������
-
-	Point2d xEnd = Point2d(xPoint[10].x + 20, xPoint[10].y); //x���յ�
-	Point2d yEnd = Point2d(yPoint[10].x, yPoint[10].y - 20); //y���յ�
-	line(back, xPoint[0], xEnd, 0); //����x��
-	drawCoorArrow(back, xEnd, Point2d(scale * 1 + cols / 2, -scale * 0 + rows / 2), oPoint, 5, 45, Scalar(0, 0, 0), 1);//��x��ļ�ͷ
-
-	line(back, yPoint[0], yEnd, 0);//����y��
-	drawCoorArrow(back, yEnd, Point2d(scale * 0 + cols / 2, -scale * 1 + rows / 2), oPoint, 5, 45, Scalar(0, 0, 0), 1);//��y��ļ�ͷ
-
-																													   //��ʾx��y�������ֵ
-	char text[11];
-	for (int i = -5; i <= 5; i++)
-	{
-		if (i == 0)
+		int lev= m2pix / 100;
+		int startg_x = lev-(visonxy.x % lev);
+		int lineNum_x = (int)(scale - startg_x) / lev;
+		//显示厘米栅格
+		for (size_t i = 0; i <= lineNum_x; i++)
 		{
-			continue;
+			line(retcap, Point(startg_x + i*lev, 0), Point(startg_x + i*lev,scale),Scalar(150,150,150));
 		}
-		if (scale <= 20)
+
+		int startg_y = lev - (visonxy.y % lev);
+		int lineNum_y = (int)(scale - startg_y) / lev;
+		//显示厘米栅格
+		for (size_t i = 0; i <= lineNum_y; i++)
 		{
-			if (i % 2 == 1 || i % 2 == -1)
+			line(retcap, Point(0, startg_y + i*lev), Point(scale, startg_y + i*lev), Scalar(150, 150, 150));
+		}
+	}
+	else if(scale <= 1000)
+	{
+		int lev = m2pix / 10;
+		int startg_x = lev - (visonxy.x % lev);
+		int lineNum_x = (int)(scale - startg_x) / lev;
+		//显示d米栅格
+		for (size_t i = 0; i <= lineNum_x; i++)
+		{
+			line(retcap, Point(startg_x + i*lev, 0), Point(startg_x + i*lev, scale), Scalar(0, 0, 0));
+		}
+
+		int startg_y = lev - (visonxy.y % lev);
+		int lineNum_y = (int)(scale - startg_y) / lev;
+		//显示d米栅格
+		for (size_t i = 0; i <= lineNum_y; i++)
+		{
+			line(retcap, Point(0, startg_y + i*lev), Point(scale, startg_y + i*lev), Scalar(0, 0, 0));
+		}
+	}
+
+	//标记机器人点
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		if (input[i].cls == IPCobj::Robot&& input[i].dimension==3)
+		{
+			//坐标转换，将世界坐标转换到map图片像素坐标。
+			Point2i pointMap;
+			pointMap.x = oPoint.x + points[i].x*m2pix;
+			pointMap.y = oPoint.y - points[i].y*m2pix;
+			//判断点是否在retcap内
+			if ((pointMap.x > (int)(rect.x)) && (pointMap.x<(int)(rect.x + scale)) && (pointMap.y>rect.y) && (pointMap.y < (int)(rect.y + scale)))
 			{
-				sprintf_s(text, "%d", i); //��ʽ�����
-				putText(back, text, xPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.3, Scalar(0, 0, 255));
+				Point pp;
+				pp.x = pointMap.x - rect.x;
+				pp.y = pointMap.y - rect.y;
+
+				circle(retcap, pp, scale / 50, Scalar(255, 0, 0), -1);
 			}
 
-		}
-		else
-		{
-			sprintf_s(text, "%d", i); //��ʽ�����
-			putText(back, text, xPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
-		}
 
-	}
-	for (int i = -5; i <= 5; i++)
-	{
-		if (scale <= 20)
-		{
-			if (i % 2 == 1 || i % 2 == -1)
-			{
-				sprintf_s(text, "%d", i); //��ʽ�����
-				putText(back, text, yPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.3, Scalar(0, 0, 255));
-			}
-		}
-		else
-		{
-			sprintf_s(text, "%d", i);
-			putText(back, text, yPoint[i + 5], CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
-		}
-
-	}
-
-	//����������
-	for (int i = 0; i < xPoint.size(); i++)
-	{
-		if (scale >= 180)
-		{
-			if (i < xPoint.size() - 1)
-			{
-				line(back, Point2d(xPoint[i].x + 0.25*scale, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x + 0.25*scale, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
-				line(back, Point2d(xPoint[i].x + 0.5*scale, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x + 0.5*scale, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
-				line(back, Point2d(xPoint[i].x + 0.75*scale, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x + 0.75*scale, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
-			}
-			line(back, Point2d(xPoint[i].x, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
-		}
-		if (scale >= 60 && scale<180)
-		{
-			if (i < xPoint.size() - 1)
-			{
-				line(back, Point2d(xPoint[i].x + 0.5*scale, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x + 0.5*scale, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
-			}
-			line(back, Point2d(xPoint[i].x, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
-		}
-		if (scale > 20 && scale <60)
-		{
-			line(back, Point2d(xPoint[i].x, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
-		}
-		if (scale <= 20)
-		{
-			if (i % 2 == 0)
-			{
-				line(back, Point2d(xPoint[i].x, xPoint[i].y - 5 * scale), Point2d(xPoint[i].x, xPoint[i].y + 5 * scale), Scalar(125, 125, 125), 1);
-			}
+			
+			
 		}
 	}
-	for (int i = 0; i < yPoint.size(); i++)
-	{
-		if (scale >= 180)
-		{
-			if (i < yPoint.size() - 1)
-			{
-				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y - 0.25*scale), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y - 0.25*scale), Scalar(125, 125, 125), 1);
-				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y - 0.5*scale), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y - 0.5*scale), Scalar(125, 125, 125), 1);
-				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y - 0.75*scale), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y - 0.75*scale), Scalar(125, 125, 125), 1);
-			}
-			line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y), Scalar(125, 125, 125), 1);
-		}
-		if (scale >= 60 && scale< 180)
-		{
-			if (i < yPoint.size() - 1)
-			{
-				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y - 0.5*scale), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y - 0.5*scale), Scalar(125, 125, 125), 1);
-			}
-			line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y), Scalar(125, 125, 125), 1);
-		}
-		if (scale > 20 && scale < 60)
-		{
-			line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y), Scalar(125, 125, 125), 1);
-		}
-		if (scale <= 20)
-		{
-			if (i % 2 == 0)
-			{
-				line(back, Point2d(yPoint[i].x - 5 * scale, yPoint[i].y), Point2d(yPoint[i].x + 5 * scale, yPoint[i].y), Scalar(125, 125, 125), 1);
-			}
-		}
-	}
+	
+	resize(retcap, retcap, Size(800, 800));
+	return retcap;
+	
 
-
-
-	//��ʾ����
-	for (int i = 0; i < points.size(); i++)
-	{
-		int id = input[i].ID;
-		//��ʾ�����˵���Ϣ
-		if (input[i].cls == 1)
-		{
-			circle(back, Point2d(scale * points[i].x + cols / 2, -scale * points[i].y + rows / 2), 4, Scalar(0, 0, 255), -1); //��ʾλ��
-			drawArrow(back, Point2d(scale * points[i].x + cols / 2, -scale * points[i].y + rows / 2), Point2d(scale * directions[i].x + cols / 2, -scale * directions[i].y + rows / 2),
-				oPoint, 10, 45, Scalar(255, 0, 0)); //��ʾ�����ü�ͷ��ʾ
-													//��ʾid
-			string str;
-			stringstream ss;
-			ss << id;
-			ss >> str;
-			putText(back, str, Point2d(scale * points[i].x + cols / 2 - 8, -scale * points[i].y + rows / 2 - 10), CV_FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 255));
-		}
-		//��ʾ���������λ��
-		else
-		{
-			rectangle(back, Point2d(scale * points[i].x + cols / 2 - 5, -scale * points[i].y + rows / 2 - 5),
-				Point2d(scale * points[i].x + cols / 2 + 5, -scale * points[i].y + rows / 2 + 5), Scalar(0, 255, 0), -1); //��ʾλ��
-		}
-	}
-
-	//imshow("back", back);
-	//imwrite("7.jpg", back);
-	//waitKey(500);
-	return back;
 }

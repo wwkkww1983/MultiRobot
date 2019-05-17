@@ -202,6 +202,7 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	m_disIPaddr.ReplaceSel(cstrip);
 	//初始化IPC
 	theApp.visionLSys.bindxml("IPCxml.xml");
+	theApp.visionLSys.initMap("map.jpg");
 	theApp.visionLSys.hMutex = CreateMutex(NULL, FALSE, NULL);
 	theApp.visionLSys.hThread = CreateThread(NULL, 0, IPCvisionLocationSystemThreadFun, NULL, 0, &theApp.visionLSys.ThreadID);
 	for (size_t i = 0; i < theApp.visionLSys.IPC.size(); i++)
@@ -366,17 +367,23 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		theApp.everyIPCobj.push_back(newereyobj);
 	}
 	ReleaseMutex(theApp.visionLSys.hMutex);//解锁
-	int showscale = 100;
+	//建立显示线程
+	DWORD Threadshowid;
+	HANDLE Threadshowh = CreateThread(NULL, 0, IPCvisionLocationSon_ShowThreadFun, NULL, 0, &Threadshowid);
+
+
+
+
 	while (theApp.ThreadOn)
 	{
-		//整合obj
+		//（1）整合obj
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 		vector<vector<IPCobj>> inputobj= theApp.everyIPCobj;
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
 		vector<IPCobj> casheobj = theApp.visionLSys.calculateAllObjection(inputobj);
 
-		//运动补偿
+		//（2）运动补偿
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
 		for (size_t i = 0; i < theApp.robotServer.getRobotListNum(); i++)
@@ -406,41 +413,100 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		ReleaseMutex(theApp.robotServer.hMutex);//解锁
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
-		//刷新obj
+		//（3）刷新obj
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 		theApp.obj = casheobj;
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 		lastobj = casheobj;
-		//显示监控
-		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-		if (theApp.seleteimshow = -1&& theApp.IPCshowImg.size()>0)
-		{
-			for (size_t j = 0; j < theApp.visionLSys.getIPCNum(); j++)
-			{
-				string istr = std::to_string(j);
-				imshow("outimg"+istr, theApp.IPCshowImg[j]);
-			}
-		}
-		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
-
-		//显示obj
-		if (theApp.show2Dflag == true)
-		{
-			Mat showobj;
-			showobj = theApp.visionLSys.paintObject(theApp.obj, Point(400, 300), showscale);
-			imshow("showobj", showobj);
-		}
-		int key = waitKey(30);
-		if (key == 'i')
-			showscale = showscale + 5;
-		if (key == 'u')
-			showscale = showscale - 5;
+		
 
 	}
 
 	return 0;
 }
 
+/*--------------------IPC视觉处理显示监控、地图线程-----------------------*/
+DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
+{
+	int looklp[3] = { 2500 ,2500,800 };//x,y,scale
+
+	
+	while (theApp.ThreadOn)
+	{
+		//（4）显示监控
+		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+		if (theApp.seleteimshow = -1 && theApp.IPCshowImg.size()>0)
+		{
+			for (size_t j = 0; j < theApp.visionLSys.getIPCNum(); j++)
+			{
+				string istr = std::to_string(j);
+				cv::imshow("outimg" + istr, theApp.IPCshowImg[j]);
+			}
+		}
+		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+											   //（5）显示地图obj
+		if (theApp.show2Dflag == true)
+		{
+			Mat showobj;
+			//zzq+
+			vector<IPCobj> testobj;
+			for (size_t i = 0; i < 3; i++)
+			{
+				IPCobj zzqobj;
+				zzqobj.cls = IPCobj::Robot;
+				zzqobj.coordinate3D = Vec3d(0.2*i, 0.1*i, 0.4);
+				zzqobj.dimension = 3;
+				testobj.push_back(zzqobj);
+			}
+			//zzq-
+			showobj = theApp.visionLSys.paintObject(testobj, Point2i(looklp[0], looklp[1]), looklp[2]);
+			cv::imshow("showobj", showobj);
+			cv::setMouseCallback("showobj", map_mouse_callback, &looklp);
+
+		}
+		int key = waitKey(30);
+
+	}
+}
+void map_mouse_callback(int event, int x, int y, int flags, void* param)
+{
+
+	static Point pre_pt = (-1, -1);//初始坐标
+	static Point cur_pt = (-1, -1);//实时坐标  
+	static Point pre_looklp = (-1, -1);
+	if (event == CV_EVENT_LBUTTONDOWN)//左键按下，读取初始坐标.
+	{
+		pre_pt = Point(x, y);
+		pre_looklp.x = *(int*)param;
+		pre_looklp.y = *((int*)param + 1);
+		
+	}
+	else if (event == CV_EVENT_MOUSEMOVE && !(flags & CV_EVENT_FLAG_LBUTTON))//左键没有按下的情况下鼠标移动的处理函数，实时显示坐标  
+	{
+	}
+	else if (event == CV_EVENT_MOUSEMOVE && (flags & CV_EVENT_FLAG_LBUTTON))//左键按下时，鼠标移动，改变looklp
+	{
+		int dx = x - pre_pt.x;
+		int dy = y - pre_pt.y;
+		*(int*)param = pre_looklp.x - dx;
+		*((int*)param+1) = pre_looklp.y - dy;
+	}
+	else if (event == CV_EVENT_LBUTTONUP)//左键松开，取消拖动。
+	{
+	}
+	else if (event == CV_EVENT_MOUSEWHEEL)//鼠标滑轮
+	{
+		double value = getMouseWheelDelta(flags);
+		/*if (value>0)
+			*((int*)param + 2) += 10;
+		else if (value<0)
+			*((int*)param + 2) -= 10;*/
+		*((int*)param + 2) += value;
+
+	}
+
+}
 /*--------------------IPC子处理线程-----------------------*/
 DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
 {

@@ -122,3 +122,6 @@ DWORD WINAPI updataRobotStatusThreadFun(LPVOID p);
 DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p);
 //-IPC子处理线程
 DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p);
+//显示线程
+DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p);
+void map_mouse_callback(int event, int x, int y, int flags, void* param); //显示线程中的鼠标回调函数
