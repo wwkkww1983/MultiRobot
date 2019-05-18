@@ -79,7 +79,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir);H:\gitLib\OpencvContrib\install\include;</IncludePath>
+    <LibraryPath>H:\gitLib\OpencvContrib\install\x64\vc15\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -120,6 +121,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>opencv_aruco340d.lib;opencv_bgsegm340d.lib;opencv_bioinspired340d.lib;opencv_calib3d340d.lib;opencv_ccalib340d.lib;opencv_core340d.lib;opencv_datasets340d.lib;opencv_dnn340d.lib;opencv_dpm340d.lib;opencv_face340d.lib;opencv_features2d340d.lib;opencv_flann340d.lib;opencv_fuzzy340d.lib;opencv_hdf340d.lib;opencv_highgui340d.lib;opencv_imgcodecs340d.lib;opencv_imgproc340d.lib;opencv_img_hash340d.lib;opencv_line_descriptor340d.lib;opencv_ml340d.lib;opencv_objdetect340d.lib;opencv_optflow340d.lib;opencv_phase_unwrapping340d.lib;opencv_photo340d.lib;opencv_plot340d.lib;opencv_reg340d.lib;opencv_rgbd340d.lib;opencv_saliency340d.lib;opencv_shape340d.lib;opencv_stereo340d.lib;opencv_stitching340d.lib;opencv_structured_light340d.lib;opencv_superres340d.lib;opencv_surface_matching340d.lib;opencv_text340d.lib;opencv_tracking340d.lib;opencv_video340d.lib;opencv_videoio340d.lib;opencv_videostab340d.lib;opencv_xfeatures2d340d.lib;opencv_ximgproc340d.lib;opencv_xobjdetect340d.lib;opencv_xphoto340d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>

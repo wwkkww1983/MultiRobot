@@ -428,9 +428,21 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 /*--------------------IPC视觉处理显示监控、地图线程-----------------------*/
 DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 {
-	int looklp[3] = { 2500 ,2500,800 };//x,y,scale
+	//int looklp[3] = { 2500 ,2500,800 };//x,y,scale
 
-	
+	struct tomouseCall
+	{
+		int x;//观察框中心点相对于map图片的像素坐标
+		int y;
+		int w;
+		float x_mouse_t;//鼠标所指点的真实坐标
+		float y_mouse_t;
+		float x_mouse;//鼠标观察框的像素坐标
+		float y_mouse;
+		Mat img;
+	}pra_mouseCall;
+	pra_mouseCall.x = 2500; pra_mouseCall.y = 2500; pra_mouseCall.w = 2000;
+
 	while (theApp.ThreadOn)
 	{
 		//（4）显示监控
@@ -445,29 +457,29 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 		}
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
-											   //（5）显示地图obj
+		//（5）显示地图obj
 		if (theApp.show2Dflag == true)
 		{
 			Mat showobj;
-			//zzq+
-			vector<IPCobj> testobj;
-			for (size_t i = 0; i < 3; i++)
-			{
-				IPCobj zzqobj;
-				zzqobj.cls = IPCobj::Robot;
-				zzqobj.coordinate3D = Vec3d(0.2*i, 0.1*i, 0.4);
-				zzqobj.dimension = 3;
-				testobj.push_back(zzqobj);
-			}
-			//zzq-
-			showobj = theApp.visionLSys.paintObject(testobj, Point2i(looklp[0], looklp[1]), looklp[2]);
+			
+			showobj = theApp.visionLSys.paintObject(theApp.obj, Point2i(pra_mouseCall.x, pra_mouseCall.y), pra_mouseCall.w);
+			//显示坐标
+			string zbstr;
+			string strx = to_string(pra_mouseCall.x_mouse_t); strx = strx.substr(0, strx.size() - 3);
+			string stry = to_string(pra_mouseCall.y_mouse_t); stry = stry.substr(0, stry.size() - 3);
+			zbstr = "(" + strx + "," + stry + ")";
+			putText(showobj, zbstr, Point(pra_mouseCall.x_mouse, pra_mouseCall.y_mouse-4), FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 0), 1, 8);
+			//显示地图
+			
 			cv::imshow("showobj", showobj);
-			cv::setMouseCallback("showobj", map_mouse_callback, &looklp);
+			pra_mouseCall.img = showobj;
+			cv::setMouseCallback("showobj", map_mouse_callback, &pra_mouseCall);
 
 		}
-		int key = waitKey(30);
+		int key = waitKey(20);
 
 	}
+	return 0;
 }
 void map_mouse_callback(int event, int x, int y, int flags, void* param)
 {
@@ -475,22 +487,71 @@ void map_mouse_callback(int event, int x, int y, int flags, void* param)
 	static Point pre_pt = (-1, -1);//初始坐标
 	static Point cur_pt = (-1, -1);//实时坐标  
 	static Point pre_looklp = (-1, -1);
+
+	float map_size = 800;
+
+	struct tomouseCall
+	{
+		int x;
+		int y;
+		int w;
+		float x_mouse_t;
+		float y_mouse_t;
+		float x_mouse;
+		float y_mouse;
+		Mat img;
+	};
+	tomouseCall* pra_mouseCall = (tomouseCall*) param;
+
 	if (event == CV_EVENT_LBUTTONDOWN)//左键按下，读取初始坐标.
 	{
 		pre_pt = Point(x, y);
-		pre_looklp.x = *(int*)param;
-		pre_looklp.y = *((int*)param + 1);
+		pre_looklp.x = pra_mouseCall->x;
+		pre_looklp.y = pra_mouseCall->y;
 		
 	}
 	else if (event == CV_EVENT_MOUSEMOVE && !(flags & CV_EVENT_FLAG_LBUTTON))//左键没有按下的情况下鼠标移动的处理函数，实时显示坐标  
 	{
+		float k = pra_mouseCall->w / map_size;
+		//计算真实坐标
+		Point2f turep;
+		turep.x = pra_mouseCall->x - theApp.visionLSys.getMapSize() / 2 - pra_mouseCall->w / 2 + x*k;
+		turep.y = - pra_mouseCall->y + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall->w / 2 - y*k;
+
+		pra_mouseCall->x_mouse_t = turep.x / (float)theApp.visionLSys.m2pix;
+		pra_mouseCall->y_mouse_t = turep.y / (float)theApp.visionLSys.m2pix;
+		pra_mouseCall->y_mouse = y;
+		pra_mouseCall->x_mouse = x;
+
+		
 	}
 	else if (event == CV_EVENT_MOUSEMOVE && (flags & CV_EVENT_FLAG_LBUTTON))//左键按下时，鼠标移动，改变looklp
 	{
 		int dx = x - pre_pt.x;
 		int dy = y - pre_pt.y;
-		*(int*)param = pre_looklp.x - dx;
-		*((int*)param+1) = pre_looklp.y - dy;
+		float k = pra_mouseCall->w / map_size;
+		//需要限幅
+
+		pra_mouseCall->x = pre_looklp.x - (int)(dx*k);
+		pra_mouseCall->y = pre_looklp.y - (int)(dy*k);
+
+		if (pra_mouseCall->x >= theApp.visionLSys.getMapSize() - pra_mouseCall->w / 2)
+		{
+			pra_mouseCall->x = theApp.visionLSys.getMapSize() - (pra_mouseCall->w / 2) - 1;
+		}
+		if (pra_mouseCall->x <= pra_mouseCall->w / 2)
+		{
+			pra_mouseCall->x = (pra_mouseCall->w / 2) + 1;
+		}
+		if (pra_mouseCall->y >= theApp.visionLSys.getMapSize() - pra_mouseCall->w / 2)
+		{
+			pra_mouseCall->y = theApp.visionLSys.getMapSize() - (pra_mouseCall->w / 2) - 1;
+		}
+		if (pra_mouseCall->y <= pra_mouseCall->w / 2)
+		{
+			pra_mouseCall->y = (pra_mouseCall->w / 2) + 1;
+		}
+
 	}
 	else if (event == CV_EVENT_LBUTTONUP)//左键松开，取消拖动。
 	{
@@ -498,11 +559,34 @@ void map_mouse_callback(int event, int x, int y, int flags, void* param)
 	else if (event == CV_EVENT_MOUSEWHEEL)//鼠标滑轮
 	{
 		double value = getMouseWheelDelta(flags);
-		/*if (value>0)
-			*((int*)param + 2) += 10;
-		else if (value<0)
-			*((int*)param + 2) -= 10;*/
-		*((int*)param + 2) += value;
+		
+		pra_mouseCall->w -= value;
+
+		if (pra_mouseCall->w >= theApp.visionLSys.getMapSize())
+		{
+			pra_mouseCall->w = theApp.visionLSys.getMapSize() - 1;
+		}
+		if (pra_mouseCall->w <= 50)
+		{
+			pra_mouseCall->w = 51;
+		}
+
+		if (pra_mouseCall->x >= theApp.visionLSys.getMapSize() - pra_mouseCall->w / 2)
+		{
+			pra_mouseCall->x = theApp.visionLSys.getMapSize() - (pra_mouseCall->w / 2) - 1;
+		}
+		if (pra_mouseCall->x <= pra_mouseCall->w / 2)
+		{
+			pra_mouseCall->x = (pra_mouseCall->w / 2) + 1;
+		}
+		if (pra_mouseCall->y >= theApp.visionLSys.getMapSize() - pra_mouseCall->w / 2)
+		{
+			pra_mouseCall->y = theApp.visionLSys.getMapSize() - (pra_mouseCall->w / 2) - 1;
+		}
+		if (pra_mouseCall->y <= pra_mouseCall->w / 2)
+		{
+			pra_mouseCall->y = (pra_mouseCall->w / 2) + 1;
+		}
 
 	}
 

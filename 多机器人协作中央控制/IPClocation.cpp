@@ -4,9 +4,11 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.5
+版  本：beta 0.6
 更  改：
-	1、地图函数做了修改，可以定义观看位置和尺度
+	1、地图函数做了修改，可以定义观看位置和尺度，修复了观看位置尺度报错的bug
+	2、加入了画箭头表示方向，且箭头皮肤可以更换。
+	3、调整了地图观感方面的提升。并且可以自定义输出showimg的大小
 
 */
 
@@ -487,12 +489,14 @@ bool IPClocation::DeleteIPC(String rtsp)
 		if (iter->rtsp == rtsp)
 		{
 			iter=IPC.erase(iter);
+			return true;
 		}
 		else
 		{
 			iter++;
 		}
 	}
+	return false;
 }
 
 /*
@@ -1058,44 +1062,35 @@ std::vector<IPCobj> IPClocation::calculateAllObjection(std::vector<std::vector<I
 
 
 //画表示物体方向的箭头
-void IPClocation::drawArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
-	cv::Scalar color, int thickness, int lineType)
+void IPClocation::drawArrow(cv::Mat& img, Point p, Point2f dirc, float size)
 {
-	const double PI = 3.1415926;
-	Point2d arrow;
+	int chan = arrowimg.channels();
+	Mat arrow;
+	resize(arrowimg, arrow, Size((int)size, (int)size));
+	int w = arrow.rows;
+	
+	float a = 3.14159/2-atan2(dirc.y, dirc.x);
 
-	//计算 θ 角
-	double angle = atan2((double)(oPoint.y - pDirection.y), (double)(oPoint.x - pDirection.x));
-
-	pLocation.x = pLocation.x - sqrt(2) * 4 * cos(angle);
-	pLocation.y = pLocation.y - sqrt(2) * 4 * sin(angle);
-	//计算箭角边的另一端的端点位置
-	arrow.x = pLocation.x + len * cos(angle + PI * alpha / 180);
-	arrow.y = pLocation.y + len * sin(angle + PI * alpha / 180);
-	line(img, pLocation, arrow, color, thickness, lineType);
-	arrow.x = pLocation.x + len * cos(angle - PI * alpha / 180);
-	arrow.y = pLocation.y + len * sin(angle - PI * alpha / 180);
-	line(img, pLocation, arrow, color, thickness, lineType);
+	for (int i = 0; i < arrow.rows; i++)
+	{
+		for (int j = 0; j < arrow.cols; j++)
+		{
+			if (arrow.at<Vec4b>(i, j)[3] > 0)
+			{
+				int xdst = (float)(j - w / 2)*cos(a) - (float)(i - w / 2)*sin(a) + (float)p.x;
+				int ydst = (float)(j - w / 2)*sin(a) + (float)(i - w / 2)*cos(a) + (float)p.y;
+				if (xdst > 0 && xdst < img.cols&&ydst>0 && ydst < img.rows)
+				{
+					img.at<Vec3b>(ydst, xdst)[0] = arrow.at<Vec4b>(i, j)[0];
+					img.at<Vec3b>(ydst, xdst)[1] = arrow.at<Vec4b>(i, j)[1];
+					img.at<Vec3b>(ydst, xdst)[2] = arrow.at<Vec4b>(i, j)[2];
+				}
+			}	
+		}
+	}
+	
 }
 
-//画坐标轴的箭头
-void IPClocation::drawCoorArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
-	cv::Scalar color, int thickness , int lineType )
-{
-	const double PI = 3.1415926;
-	Point2d arrow;
-
-	//计算 θ 角
-	double angle = atan2((double)(oPoint.y - pDirection.y), (double)(oPoint.x - pDirection.x));
-
-	//计算箭角边的另一端的端点位置
-	arrow.x = pLocation.x + len * cos(angle + PI * alpha / 180);
-	arrow.y = pLocation.y + len * sin(angle + PI * alpha / 180);
-	line(img, pLocation, arrow, color, thickness, lineType);
-	arrow.x = pLocation.x + len * cos(angle - PI * alpha / 180);
-	arrow.y = pLocation.y + len * sin(angle - PI * alpha / 180);
-	line(img, pLocation, arrow, color, thickness, lineType);
-}
 
 
 int IPClocation::findVecterElm(vector<IPCobj> vec, uint8_t robotidid)
@@ -1119,10 +1114,17 @@ int IPClocation::findVecterElm(vector<IPCobj> vec, uint8_t robotidid)
 void IPClocation::initMap(std::string mapname)
 {
 	map = imread(mapname);
+	arrowimg = imread("arrow.png", CV_LOAD_IMAGE_UNCHANGED);
+
+}
+int IPClocation::getMapSize()
+{
+	return map.rows;
 }
 
 Mat IPClocation::paintObject(vector<IPCobj> input, Point2i lookCenter, int scale)
 {
+	int retmap_size = 800;
 	vector<Point2d> points;
 	vector<Point2d>	directions;
 	Point2i visonxy; visonxy.x = lookCenter.x - scale / 2; visonxy.y = lookCenter.y - scale / 2;
@@ -1189,6 +1191,7 @@ Mat IPClocation::paintObject(vector<IPCobj> input, Point2i lookCenter, int scale
 		}
 	}
 
+	resize(retcap, retcap, Size(retmap_size, retmap_size));
 	//标记机器人点
 	for (size_t i = 0; i < input.size(); i++)
 	{
@@ -1202,19 +1205,17 @@ Mat IPClocation::paintObject(vector<IPCobj> input, Point2i lookCenter, int scale
 			if ((pointMap.x > (int)(rect.x)) && (pointMap.x<(int)(rect.x + scale)) && (pointMap.y>rect.y) && (pointMap.y < (int)(rect.y + scale)))
 			{
 				Point pp;
-				pp.x = pointMap.x - rect.x;
-				pp.y = pointMap.y - rect.y;
+				pp.x = (pointMap.x - rect.x)*retmap_size/ scale;
+				pp.y = (pointMap.y - rect.y)*retmap_size / scale;
 
-				circle(retcap, pp, scale / 50, Scalar(255, 0, 0), -1);
+				//circle(retcap, pp, scale / 100, Scalar(255, 0, 0), -1);
+				drawArrow(retcap, pp, directions[i], retmap_size / 30.0);
+
 			}
-
-
-			
-			
 		}
 	}
 	
-	resize(retcap, retcap, Size(800, 800));
+	
 	return retcap;
 	
 

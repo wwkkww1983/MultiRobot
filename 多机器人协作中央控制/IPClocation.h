@@ -4,10 +4,12 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.5
+版  本：beta 0.6
 更  改：
-	1、地图函数做了修改，可以定义观看位置和尺度
-	
+1、地图函数做了修改，可以定义观看位置和尺度，修复了观看位置尺度报错的bug
+2、加入了画箭头表示方向，且箭头皮肤可以更换。
+3、调整了地图观感方面的提升。并且可以自定义输出showimg的大小
+
 */
 
 #pragma once
@@ -125,7 +127,8 @@ public:
 	int Algorithm=0;//0:AR姿态估计定位   1:多相机交点定位
 	//定位延时
 	double delayTime = 0;
-
+	//地图的比例尺，1m=500pix
+	int m2pix = 500;
 	
 
 private:
@@ -157,13 +160,13 @@ private:
 	@brief:画定位坐标系用的函数
 	@author:张猛
 	*/
-	void drawArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
-		cv::Scalar color, int thickness = 2, int lineType = 8);
-	void drawCoorArrow(cv::Mat& img, cv::Point2d pLocation, cv::Point2d pDirection, Point2d oPoint, int len, int alpha,
-		cv::Scalar color, int thickness = 2, int lineType = 8);
+	void drawArrow(cv::Mat& img, Point p, Point2f dirc, float size);
+
 
 	Mat map;//用于存储大地图
-	int m2pix = 500;
+	Mat arrowimg;//箭头图标
+
+	
 
 
 public://输出函数接口
@@ -296,6 +299,7 @@ public://输出函数接口
 	*/
 	Mat paintObject(std::vector<IPCobj> input, Point2i lookCenter, int scale);
 	void initMap(std::string mapname);//初始化地图
+	int getMapSize();//得到地图的大小，默认地图为正方形的。
 	/*
 	*@brief：找元素
 	*/
