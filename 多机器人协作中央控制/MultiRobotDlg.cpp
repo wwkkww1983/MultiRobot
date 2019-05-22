@@ -8,6 +8,7 @@
 #include "MultiRobotDlg.h"
 #include "afxdialogex.h"
 #include "directionDlg.h"
+#include "addipcDlg.h"
 
 
 #ifdef _DEBUG
@@ -126,6 +127,7 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_COMMAND(ID_32778, &CMultiRobotDlg::On32778)
 	ON_COMMAND(ID_32779, &CMultiRobotDlg::Onshow2Donoff)
 	ON_COMMAND(ID_32771, &CMultiRobotDlg::Onvision)
+	ON_COMMAND(ID_32780, &CMultiRobotDlg::OnAddIPC)
 END_MESSAGE_MAP()
 
 
@@ -376,42 +378,68 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 
 	while (theApp.ThreadOn)
 	{
+		vector<vector<IPCobj>> inputobj;
+		// 识别处理每一个图像中的obj
+		//查看每一个IPC的图片
+		for (size_t i = 0; i < theApp.IPCshowImg.size(); i++)
+		{
+			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+			Mat img = theApp.IPCshowImg[i];
+			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+			vector<IPCobj> objection;
+			if (theApp.visionLSys.Algorithm == 1)//判断用哪个算法
+			{
+				objection = theApp.visionLSys.locationMat(img, i);
+			}
+			else if(theApp.visionLSys.Algorithm == 0)
+			{
+				objection = theApp.visionLSys.location(img, i);
+			}
+
+			inputobj.push_back(objection);
+		}
+
 		//（1）整合obj
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-		vector<vector<IPCobj>> inputobj= theApp.everyIPCobj;
+		theApp.everyIPCobj= inputobj;
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
 		vector<IPCobj> casheobj = theApp.visionLSys.calculateAllObjection(inputobj);
 
 		//（2）运动补偿
-		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
-		for (size_t i = 0; i < theApp.robotServer.getRobotListNum(); i++)
+		if (theApp.movecompFlag == true)
 		{
-			//计算上一帧obj的角度
-			int objindex = theApp.visionLSys.findVecterElm(lastobj, theApp.robotServer.robotlist[i].robotID);
-			float lasttheta;
-			if (objindex >= 0)
+			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
+			for (size_t i = 0; i < theApp.robotServer.getRobotListNum(); i++)
 			{
-				if(lastobj[objindex].direction3D[0]>0)
-					lasttheta = atan(lastobj[objindex].direction3D[1] / lastobj[objindex].direction3D[0]);
-				if (lastobj[objindex].direction3D[0] < 0)
+				Point2f dxy;
+				//计算上一帧obj的角度
+				int objindex = theApp.visionLSys.findVecterElm(lastobj, theApp.robotServer.robotlist[i].robotID);
+				float lasttheta;
+				if (objindex >= 0)
 				{
-					lasttheta = atan(lastobj[objindex].direction3D[1] / lastobj[objindex].direction3D[0])+3.14159;
+					if (lastobj[objindex].direction3D[0] > 0)
+						lasttheta = atan(lastobj[objindex].direction3D[1] / lastobj[objindex].direction3D[0]);
+					if (lastobj[objindex].direction3D[0] < 0)
+					{
+						lasttheta = atan(lastobj[objindex].direction3D[1] / lastobj[objindex].direction3D[0]) + 3.14159;
+					}
+					dxy = theApp.robotServer.robotlist[i].pvw.displace(theApp.visionLSys.delayTime, lasttheta);
+				}
+
+
+
+				objindex = theApp.visionLSys.findVecterElm(casheobj, theApp.robotServer.robotlist[i].robotID);
+				if (objindex >= 0)
+				{
+					casheobj[objindex].coordinate3D[0] += dxy.x;
+					casheobj[objindex].coordinate3D[1] += dxy.y;
 				}
 			}
-
-			Point2f dxy = theApp.robotServer.robotlist[i].pvw.displace(theApp.visionLSys.delayTime, lasttheta);
-			
-			objindex = theApp.visionLSys.findVecterElm(casheobj, theApp.robotServer.robotlist[i].robotID);
-			if (objindex >= 0)
-			{
-				casheobj[objindex].coordinate3D[0] += dxy.x;
-				casheobj[objindex].coordinate3D[1] += dxy.y;
-			}
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 		}
-		ReleaseMutex(theApp.robotServer.hMutex);//解锁
-		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
 		//（3）刷新obj
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
@@ -452,7 +480,20 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 			for (size_t j = 0; j < theApp.visionLSys.getIPCNum(); j++)
 			{
 				string istr = std::to_string(j);
-				cv::imshow("outimg" + istr, theApp.IPCshowImg[j]);
+				if (j < theApp.IPCshowImg.size())
+				{
+					//画一个世界坐标系
+					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+					Mat showimg= theApp.IPCshowImg[j].clone();
+					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+					Vec3d rvecs, tvecs;
+					Rodrigues(theApp.visionLSys.IPC[j].RwMatrix, rvecs);
+					tvecs = theApp.visionLSys.IPC[j].TwVec;
+					cv::aruco::drawAxis(showimg, theApp.visionLSys.IPC[j].cameraMatrix, theApp.visionLSys.IPC[j].distCoeffs, rvecs, tvecs, 0.5);
+
+					cv::imshow("outimg" + istr, showimg);
+				}
 			}
 		}
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
@@ -476,7 +517,7 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 			cv::setMouseCallback("showobj", map_mouse_callback, &pra_mouseCall);
 
 		}
-		int key = waitKey(20);
+		int key = waitKey(10);
 
 	}
 	return 0;
@@ -612,21 +653,22 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
 		theApp.visionLSys.IPC[index].cap >> img;
 		ReleaseMutex(theApp.visionLSys.IPC[index].hMutexcap);//解锁
 
-		resize(img, img, Size(1280, 720));
+		//resize(img, img, Size(1280, 720));
 		//location
-		vector<IPCobj> objection;
-		objection = theApp.visionLSys.location(img, 0, outimg);
+		//vector<IPCobj> objection;
+		//objection = theApp.visionLSys.location(img, 0, outimg);
 
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 		//刷新监视图
-		theApp.IPCshowImg[index] = outimg.clone();
+		theApp.IPCshowImg[index] = img;
 		//刷新obj
-		theApp.everyIPCobj[index] = objection;
+		//theApp.everyIPCobj[index] = objection;
 
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
 
-		Sleep(1);
+		
+		//Sleep(1);
 
 	}
 	return 0;
@@ -1045,6 +1087,7 @@ void CMultiRobotDlg::On32777()
 
 	//定时刷新机器的线速度角速度。
 	SetTimer(2, theApp.visionLSys.delayTime / CasheQueue_MAXSIZE, NULL);
+	printd("测试完成");
 	return ;
 
 }
@@ -1073,6 +1116,10 @@ void CMultiRobotDlg::On32778()
 	if (ret == false)
 	{
 		AfxMessageBox(_T("标定失败。"));
+	}
+	else
+	{
+		printd("标定成功");
 	}
 }
 
@@ -1148,4 +1195,30 @@ void CMultiRobotDlg::Onvision()
 	// TODO: 在此添加命令处理程序代码
 	AfxMessageBox(_T("测试版\n\r v0.5"));
 
+}
+
+
+void CMultiRobotDlg::OnAddIPC()
+{
+	// TODO: 在此添加命令处理程序代码
+	addipcDlg Dlg;
+	Size board_size = Size(9, 6);
+	Size square_size;
+	string ipc_rtsp;
+	string filedir;
+	if (Dlg.DoModal() == IDOK)
+	{
+		filedir = CT2CA(Dlg.m_path.GetBuffer(0));
+		ipc_rtsp= CT2CA(Dlg.rtsp.GetBuffer(0));
+		square_size = Size(Dlg.m_qsize, Dlg.m_qsize);
+		bool ret = theApp.visionLSys.AddIPC(filedir, board_size, square_size, ipc_rtsp);
+		if (ret == true)
+		{
+			printd("添加成功");
+		}
+		else
+		{
+			printd("添加失败");
+		}
+	}
 }

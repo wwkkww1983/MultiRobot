@@ -45,6 +45,9 @@
     <ClInclude Include="IPClocation.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="addipcDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="多机器人协作中央控制.cpp">
@@ -66,6 +69,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="IPClocation.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="addipcDlg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

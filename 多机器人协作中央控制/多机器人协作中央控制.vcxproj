@@ -193,6 +193,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="addipcDlg.h" />
     <ClInclude Include="directionDlg.h" />
     <ClInclude Include="IPClocation.h" />
     <ClInclude Include="MultiRobotDlg.h" />
@@ -204,6 +205,7 @@
     <ClInclude Include="多机器人协作中央控制.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="addipcDlg.cpp" />
     <ClCompile Include="directionDlg.cpp" />
     <ClCompile Include="IPClocation.cpp" />
     <ClCompile Include="MultiRobotDlg.cpp" />

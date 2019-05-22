@@ -4,18 +4,18 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.6
+版  本：beta 0.7
 更  改：
-	1、地图函数做了修改，可以定义观看位置和尺度，修复了观看位置尺度报错的bug
-	2、加入了画箭头表示方向，且箭头皮肤可以更换。
-	3、调整了地图观感方面的提升。并且可以自定义输出showimg的大小
-
+	1、添加提前运算逆矩阵的功能。
+	2、新增第二个定位算法：多相机融合定位。
 */
 
 #include "stdafx.h"
+#include "Eigen\Eigen"
 #include "IPClocation.h"
 #include "zfun.h"
-#include "Eigen\Eigen"
+
+#include <opencv2/core/eigen.hpp>
 
 using namespace std;
 
@@ -72,6 +72,10 @@ void IPCmsg::updateRwMatrixI()
 {
 	invert(RwMatrix, RwMatrixI);
 }
+void IPCmsg::updatecameraMatrixI()
+{
+	invert(cameraMatrix, cameraMatrixI);
+}
 
 
 /*-----------------------------------------------------------------------------
@@ -86,6 +90,9 @@ IPClocation::IPClocation()
 
 bool IPClocation::AddIPC(string filedir, cv::Size board_size, cv::Size square_size, cv::String rtsp,double err_th)
 {
+	AllocConsole();
+	freopen("CONOUT$", "w", stdout);
+
 	//查看是否有rtsp重复，有则返回错误
 	vector<string> allipcrtsp=getIPCrtsp();
 	if (zfun::findVecterElm(allipcrtsp, rtsp) != -1)
@@ -216,7 +223,8 @@ bool IPClocation::AddIPC(string filedir, cv::Size board_size, cv::Size square_si
 
 	//保存定标结果    
 	UpdateXMLfile();
-
+	//关闭控制台
+	FreeConsole();
 	return true;
 }
 
@@ -264,6 +272,7 @@ void IPClocation::UpdateIPC()
 		xml["R" + indexc] >> newipc.RwMatrix;
 		xml["T" + indexc] >> newipc.TwVec;
 		newipc.updateRwMatrixI();
+		newipc.updatecameraMatrixI();
 		IPC.push_back(newipc);
 	}
 
@@ -1056,6 +1065,79 @@ std::vector<IPCobj> IPClocation::calculateAllObjection(std::vector<std::vector<I
 			retobj.push_back(newobj);
 		}
 	}
+	else if(Algorithm == 1)//1:多相机交点定位
+	{
+		//测试用，要删掉
+		//AllocConsole();
+		//freopen("CONOUT$", "w", stdout);
+
+		for (size_t i = 0; i < robotID.size(); i++)
+		{
+
+			if (fIPCindex[i].size() >= 2)//只有有两个以上的相机出现了该robot，则可以用融合算法
+			{
+				//计算k向量
+				vector<Eigen::Vector3d> K;
+				for (size_t n = 0; n < fIPCindex[i].size(); n++)
+				{
+					int IPCID= fIPCindex[i][n][0];//摄像头编号
+					IPCobj thisobj = eobj[IPCID][fIPCindex[i][n][1]];
+
+					Eigen::Matrix3d RI;
+					cv2eigen(IPC[IPCID].RwMatrixI, RI);
+					Eigen::Matrix3d MI;
+					cv2eigen(IPC[IPCID].cameraMatrixI, MI);
+					Eigen::Vector3d Pc;
+					Pc << (double)thisobj.coordinate2D.x, (double)thisobj.coordinate2D.y, 1.0;
+					K.push_back(RI*MI*Pc);
+				}
+				//计算b向量
+				vector<Eigen::Vector3d> B;
+				for (size_t n = 0; n < fIPCindex[i].size(); n++)
+				{
+					int IPCID = fIPCindex[i][n][0];//摄像头编号
+
+					Eigen::Matrix3d RI;
+					cv2eigen(IPC[IPCID].RwMatrixI, RI);
+					Eigen::Vector3d T;
+					cv2eigen(IPC[IPCID].TwVec, T);
+					B.push_back(RI*T);
+				}
+				//根据IPC个数，定义HQ向量
+				Eigen::MatrixXd H; H.setZero(3 * fIPCindex[i].size(), 3 + fIPCindex[i].size());
+				Eigen::VectorXd Q(3 * fIPCindex[i].size());
+				Eigen::MatrixXd E; E.setIdentity(3,3);
+
+				//赋值HQ向量
+				for (size_t n = 0; n <fIPCindex[i].size(); n++)
+				{
+					H.block(n * 3, 0, 3, 3) = -E;
+					H.block(n * 3, 3+n, 3, 1) = K[n];
+				}
+				cout << H << endl;
+				for (size_t n = 0; n <fIPCindex[i].size(); n++)
+				{
+					Q.block(n * 3, 0, 3, 1) = B[n];
+				}
+				cout << Q << endl;
+				//广义逆矩阵计算
+				Eigen::VectorXd Pw = H.colPivHouseholderQr().solve(Q);
+				cout << Pw << endl;
+				//位置点已经知道，开始push到retobj里
+				IPCobj newobj;
+				newobj.dimension = 3;
+				newobj.ID = robotID[i];
+				newobj.cls = IPCobj::Robot;
+				newobj.coordinate3D[0] = Pw[0]; newobj.coordinate3D[1] = Pw[1]; newobj.coordinate3D[2] = Pw[2];
+				newobj.direction3D[0] = 1; newobj.direction3D[1] = 0; newobj.direction3D[2] = 0;
+				retobj.push_back(newobj);
+			}
+		}
+		//关闭控制台
+		//FreeConsole();
+	}
+
+	
 	return retobj;
 
 }

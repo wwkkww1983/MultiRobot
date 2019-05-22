@@ -10,6 +10,7 @@
 #define IDR_MAINFRAME                   128
 #define IDR_MENU1                       129
 #define IDD_DIALOG1                     133
+#define IDD_DIALOG2                     135
 #define IDC_LIST4                       1007
 #define IDC_EDIT1                       1008
 #define IDC_EDIT2                       1009
@@ -47,13 +48,14 @@
 #define ID_32777                        32777
 #define ID_32778                        32778
 #define ID_32779                        32779
+#define ID_32780                        32780
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        135
-#define _APS_NEXT_COMMAND_VALUE         32780
+#define _APS_NEXT_RESOURCE_VALUE        137
+#define _APS_NEXT_COMMAND_VALUE         32781
 #define _APS_NEXT_CONTROL_VALUE         1039
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

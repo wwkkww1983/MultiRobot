@@ -108,6 +108,7 @@ public:
 	afx_msg void Onshow2Donoff();
 	
 	afx_msg void Onvision();
+	afx_msg void OnAddIPC();
 };
 
 //ºËÐÄ£¡£¡£¡£¡£¡
