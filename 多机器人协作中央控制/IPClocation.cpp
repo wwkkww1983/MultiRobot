@@ -4,10 +4,10 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.7
+版  本：beta 0.8
 更  改：
-	1、添加提前运算逆矩阵的功能。
-	2、新增第二个定位算法：多相机融合定位。
+	1、改进locationMat函数，增加了姿态估计功能
+	2、calculateAllObjection 函数 提供了了为AR估计姿态算法功能的支持。
 */
 
 #include "stdafx.h"
@@ -706,8 +706,8 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex, Mat &outimg)
 			}
 		}
 
-		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
 		//**选取大号机器人的id和角点位置
+		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[0][0] && ids[i] <= AR_ID_distribList[0][1])
@@ -755,9 +755,8 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex, Mat &outimg)
 			}
 		}
 
-
+		//**选取ARTAG
 		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
-		//选取ARTAG
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i]== worldAR_ID)
@@ -813,10 +812,9 @@ std::vector<IPCobj> IPClocation::locationMat(Mat img, int IPCindex)
 	std::vector<IPCobj> retobj;
 
 	//开始定位
-	//存储所有id号
-	vector<int> ids;
-	//存储所有角点
-	vector<vector<Point2f> > corners;
+	vector<int> ids;//存储所有id号
+	vector<vector<Point2f> > corners;//存储所有角点
+
 
 	Mat imageCopy;
 	Ptr<aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(ARtag_dict);
@@ -829,10 +827,11 @@ std::vector<IPCobj> IPClocation::locationMat(Mat img, int IPCindex)
 	if (ids.size() > 0)
 	{
 
+		vector< Vec3d > rvecsx, tvecsx;		//存储小号机器人的姿态
 		vector<int> idsx;					//储存小号机器人的ID
 		vector<vector<Point2f> > cornersx;	//储存小号机器人的角点
 
-		//选取小号机器人的id和角点位置
+		//**选取小号机器人的id和角点位置
 		for (size_t i = 0; i < ids.size(); i++)
 		{
 			if (ids[i] >= AR_ID_distribList[1][0] && ids[i] <= AR_ID_distribList[1][1])
@@ -842,20 +841,38 @@ std::vector<IPCobj> IPClocation::locationMat(Mat img, int IPCindex)
 				cornersx.push_back(corners[i]);
 			}
 		}
-		//得到这些小号机器人相机坐标
-		for (size_t i = 0; i < idsx.size(); i++)
+		if (idsx.size() > 0)
 		{
-			//定义一个IPCobj 用于记录物体信息
-			IPCobj newobj;
-			newobj.cls = IPCobj::Robot;
-			newobj.ID = idsx[i];
-			newobj.dimension = 2;
-			//开始进行坐标转化
-			newobj.coordinate2D = calculateCentre(cornersx[i]);
 
-			retobj.push_back(newobj);
+			//对这些小号机器人进行姿态估计
+			if(estimation_Algorithm==0)
+				cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[1][2] / 1000.0, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx, tvecsx);
+
+			//得到这些小号机器人相机坐标
+			for (size_t i = 0; i < idsx.size(); i++)
+			{
+				//定义一个IPCobj 用于记录物体信息
+				IPCobj newobj;
+				newobj.cls = IPCobj::Robot;
+				newobj.ID = idsx[i];
+				newobj.dimension = 2;
+				//开始进行坐标转化
+				newobj.coordinate2D = calculateCentre(cornersx[i]);
+				if (estimation_Algorithm == 0)
+				{
+					Mat rw; //存储物体方向
+					Mat Rs;//存储物体旋转矩阵
+					Mat re = Mat(Vec3d(1, 0, 0), true);;//
+					Rodrigues(rvecsx[i], Rs);
+					rw = IPC[IPCindex].RwMatrixI*Rs*re;//公式
+					if (rw.rows == 3 && rw.cols == 1)//如果正确就转化到direction3D
+					{
+						newobj.direction3D = rw;//?????
+					}
+				}
+				retobj.push_back(newobj);
+			}
 		}
-
 
 
 	}
@@ -1114,22 +1131,36 @@ std::vector<IPCobj> IPClocation::calculateAllObjection(std::vector<std::vector<I
 					H.block(n * 3, 0, 3, 3) = -E;
 					H.block(n * 3, 3+n, 3, 1) = K[n];
 				}
-				cout << H << endl;
+	
 				for (size_t n = 0; n <fIPCindex[i].size(); n++)
 				{
 					Q.block(n * 3, 0, 3, 1) = B[n];
 				}
-				cout << Q << endl;
+		
 				//广义逆矩阵计算
 				Eigen::VectorXd Pw = H.colPivHouseholderQr().solve(Q);
-				cout << Pw << endl;
+		
 				//位置点已经知道，开始push到retobj里
 				IPCobj newobj;
 				newobj.dimension = 3;
 				newobj.ID = robotID[i];
 				newobj.cls = IPCobj::Robot;
 				newobj.coordinate3D[0] = Pw[0]; newobj.coordinate3D[1] = Pw[1]; newobj.coordinate3D[2] = Pw[2];
-				newobj.direction3D[0] = 1; newobj.direction3D[1] = 0; newobj.direction3D[2] = 0;
+				//如果是用了AR估计姿态算法，则需要平均姿态值
+				if (estimation_Algorithm == 0)
+				{
+					newobj.direction3D[0] = 0; newobj.direction3D[1] = 0; newobj.direction3D[2] = 0;
+					//遍历该robotID所有的IPC,并且平均坐标
+					for (size_t j = 0; j < fIPCindex[i].size(); j++)
+					{
+						newobj.direction3D[0] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].direction3D[0];
+						newobj.direction3D[1] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].direction3D[1];
+						newobj.direction3D[2] += eobj[fIPCindex[i][j][0]][fIPCindex[i][j][1]].direction3D[2];
+					}
+					newobj.direction3D[0] /= fIPCindex[i].size();
+					newobj.direction3D[1] /= fIPCindex[i].size();
+					newobj.direction3D[2] /= fIPCindex[i].size();
+				}
 				retobj.push_back(newobj);
 			}
 		}

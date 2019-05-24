@@ -2,10 +2,10 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.4
+版  本：beta 0.5
 更  新：
-	1、添加CasheQueuevw类，主要用于缓存角速度与线速度采样值。并且提供积分接口，以及计算位移变化量接口。并且添加变量在robot中。
-	2、添加了opencv库，并且注释掉了std（主要是bind会被重加载）。
+	 1、改进了运动补偿算法，对速度进行了加权处理。
+	 2、对move函数的输入参数进行更改。为了适应实际机器人的结构。
 */
 
 
@@ -77,8 +77,8 @@ cv::Point2f CasheQueuevw::displace(float Ts,float theta)
 	for (size_t i = 0; i < CasheQueue_MAXSIZE; i++)
 	{
 		float thetai = integralW(detaT, i)+ theta;
-		sumv.x = sumv.x + v[i] * cos(thetai);
-		sumv.y = sumv.y + v[i] * sin(thetai);
+		sumv.x = sumv.x + v[i]*0.8 * cos(thetai);
+		sumv.y = sumv.y + v[i] * 0.8 * sin(thetai);
 	}
 	sumv.x = sumv.x*detaT;
 	sumv.y = sumv.y*detaT;
@@ -153,7 +153,7 @@ INT8 robot::move(float lin_val, float ang_val)
 	float_to_char lin;
 	float_to_char ang;
 	
-	lin.fval = lin_val;
+	lin.fval = -lin_val;
 	ang.fval = ang_val;
 
 	char outbuf[SEND_LENGHT] = { 0xd8,0x02,0x00,0x02,0x04,0,0,0,0,0x04,0,0,0,0 ,0xc7};

@@ -4,10 +4,10 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.7
+版  本：beta 0.8
 更  改：
-1、添加提前运算逆矩阵的功能。
-2、新增第二个定位算法：多相机融合定位。
+	1、改进locationMat函数，增加了姿态估计功能
+	2、calculateAllObjection 函数 提供了了为AR估计姿态算法功能的支持。
 */
 
 #pragma once
@@ -128,6 +128,7 @@ public:
 	HANDLE hMutex;
 	//定位算法
 	int Algorithm=1;//0:AR姿态估计定位   1:多相机融合定位
+	int estimation_Algorithm = 1;//如果是多相机融合定位，姿态估计算法用什么。0用AR姿态估计 1用运动学估计
 	//定位延时
 	double delayTime = 0;
 	//地图的比例尺，1m=500pix
@@ -145,8 +146,8 @@ private:
 	//AR码分配类型以及size
 	//将AR_ID分为2个区间，每个区间有3个值：ID取值域2个 ，AR码的大小size一个(单位mm)
 	uint16_t AR_ID_distribList[2][3] = {
-		{20,60,178},	//大号机器人的尺寸
-		{80,150,100}	//小号机器人的尺寸
+		{20,60,178},	//大号机器人的尺寸mm
+		{80,150,100}	//小号机器人的尺寸mm
 	};
 
 	//存储相机参数

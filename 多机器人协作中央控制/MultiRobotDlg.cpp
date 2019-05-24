@@ -374,7 +374,16 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 	HANDLE Threadshowh = CreateThread(NULL, 0, IPCvisionLocationSon_ShowThreadFun, NULL, 0, &Threadshowid);
 
 
+	////测试用，要删掉
+	//AllocConsole();
+	//freopen("CONOUT$", "w", stdout);
 
+	//定义用于运动学姿态估计的变量
+	int whilect=0;		//循环计数
+	vector<IPCobj> lastobj_estim;//用于姿态估计的，比lastobj早10倍
+	int move_flag = 1;
+	float dir_now = 0;   // 0-2pi
+	float dir_st = 0;
 
 	while (theApp.ThreadOn)
 	{
@@ -405,6 +414,88 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
 		vector<IPCobj> casheobj = theApp.visionLSys.calculateAllObjection(inputobj);
+		//（2）如果是运动学估计算法，来估计姿态位置.
+		//刷新方向
+		whilect++;
+		if (theApp.visionLSys.estimation_Algorithm == 1 && whilect>10)
+		{
+			whilect = 0;
+			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
+			for (size_t i = 0; i < theApp.robotServer.getRobotListNum(); i++)
+			{
+				Point2f ds;
+				float dsl;
+				int objindex_last = theApp.visionLSys.findVecterElm(lastobj_estim, theApp.robotServer.robotlist[i].robotID);
+				int objindex_new = theApp.visionLSys.findVecterElm(casheobj, theApp.robotServer.robotlist[i].robotID);
+				if (objindex_last >= 0 && objindex_new >= 0)
+				{
+					ds.x = casheobj[objindex_new].coordinate3D[0] - lastobj_estim[objindex_last].coordinate3D[0];
+					ds.y = casheobj[objindex_new].coordinate3D[1] - lastobj_estim[objindex_last].coordinate3D[1];
+					dsl = sqrt(ds.x*ds.x + ds.y*ds.y);
+					//开始运动学姿态估计算法
+					if (move_flag==0 && dsl>0.01)
+					{
+						move_flag = 1;
+						//theApp.robotServer.robotlist[i].initIMU();
+						//dir_st = dir_now;
+					}
+					else if(move_flag==1 && dsl<=0.01)
+					{
+						move_flag = 0;
+						theApp.robotServer.robotlist[i].initIMU();
+						dir_st = dir_now;
+					}
+
+					if (move_flag == 0)
+					{
+						//刷新IMU
+						imu_msg imudata;
+						imudata = theApp.robotServer.robotlist[i].getIMU();
+						//四元组转RPY
+						Eigen::Vector3d rpy;
+						rpy = zfun::Quaterniond2Euler(imudata.orientation_x, imudata.orientation_y, imudata.orientation_z, imudata.orientation_w);
+						float roll = zfun::numFormat(rpy[0] * 180 / 3.14159, 1);
+
+						float ddirection = acos(imudata.orientation_w) * 2 * 180 / 3.14159;
+
+						if (ddirection + roll > 179 && ddirection + roll < 181)
+							dir_now = dir_st - ddirection;
+						else if((int)ddirection==(int)roll)
+						{
+							dir_now = dir_st + ddirection;
+						}
+					}
+					else if(move_flag==1)
+					{
+						dir_now = atan2(ds.y, ds.x)*180/3.14159;
+					}
+					
+
+				}
+
+				
+			}
+
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+			lastobj_estim = casheobj;
+		}
+		//继承方向
+		if (theApp.visionLSys.estimation_Algorithm == 1)
+		{
+			for (size_t i = 0; i < theApp.robotServer.getRobotListNum(); i++)
+			{
+				int objindex_last = theApp.visionLSys.findVecterElm(lastobj_estim, theApp.robotServer.robotlist[i].robotID);
+				int objindex_new = theApp.visionLSys.findVecterElm(casheobj, theApp.robotServer.robotlist[i].robotID);
+				if (objindex_last >= 0 && objindex_new >= 0)
+				{
+					//给这个id的机器人obj角度信息
+					casheobj[objindex_new].direction3D[0] = cos(dir_now*3.14159 / 180.0);
+					casheobj[objindex_new].direction3D[1] = sin(dir_now*3.14159 / 180.0);
+				}
+			}
+		}
 
 		//（2）运动补偿
 		if (theApp.movecompFlag == true)

@@ -43,7 +43,9 @@ public:
 
 	//标志位配置
 	bool show2Dflag = false;//显示2D地图
-	bool movecompFlag = false;//运动补偿
+	bool movecompFlag = true;//运动补偿
+
+	
 
 	DECLARE_MESSAGE_MAP()
 };
