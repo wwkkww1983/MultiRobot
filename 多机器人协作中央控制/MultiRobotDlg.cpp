@@ -72,6 +72,7 @@ CMultiRobotDlg::CMultiRobotDlg(CWnd* pParent /*=NULL*/)
 	, m_rtsp(_T(""))
 	, m_direction(0)
 	, m_delaytime(0)
+	, m_showimg(FALSE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -106,6 +107,7 @@ void CMultiRobotDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT15, m_direction);
 	DDX_Text(pDX, IDC_EDIT16, m_delaytime);
 	DDX_Control(pDX, IDC_EDIT17, m_printout);
+	DDX_Check(pDX, IDC_CHECK3, m_showimg);
 }
 
 BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
@@ -128,6 +130,8 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_COMMAND(ID_32779, &CMultiRobotDlg::Onshow2Donoff)
 	ON_COMMAND(ID_32771, &CMultiRobotDlg::Onvision)
 	ON_COMMAND(ID_32780, &CMultiRobotDlg::OnAddIPC)
+	ON_LBN_DBLCLK(IDC_LIST1, &CMultiRobotDlg::OnLbnDblclkList1)
+	ON_BN_CLICKED(IDC_CHECK3, &CMultiRobotDlg::OnBnClickedCheck3)
 END_MESSAGE_MAP()
 
 
@@ -565,8 +569,8 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 	while (theApp.ThreadOn)
 	{
 		//（4）显示监控
-		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-		if (theApp.seleteimshow = -1 && theApp.IPCshowImg.size()>0)
+		
+		if (theApp.seleteimshow == -1 && theApp.IPCshowImg.size()>0)
 		{
 			for (size_t j = 0; j < theApp.visionLSys.getIPCNum(); j++)
 			{
@@ -587,7 +591,26 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 				}
 			}
 		}
-		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+		else if(theApp.seleteimshow >=0 && theApp.IPCshowImg.size()>theApp.seleteimshow)
+		{
+			int j = theApp.seleteimshow;
+			//画一个世界坐标系
+			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+			Mat showimg = theApp.IPCshowImg[j].clone();
+			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+			Vec3d rvecs, tvecs;
+			Rodrigues(theApp.visionLSys.IPC[j].RwMatrix, rvecs);
+			tvecs = theApp.visionLSys.IPC[j].TwVec;
+			cv::aruco::drawAxis(showimg, theApp.visionLSys.IPC[j].cameraMatrix, theApp.visionLSys.IPC[j].distCoeffs, rvecs, tvecs, 0.5);
+
+			cv::imshow("outimg", showimg);
+		}
+		else if(theApp.seleteimshow==-2)
+		{
+			destroyAllWindows();
+		}
+
 
 		//（5）显示地图obj
 		if (theApp.show2Dflag == true)
@@ -1312,4 +1335,28 @@ void CMultiRobotDlg::OnAddIPC()
 			printd("添加失败");
 		}
 	}
+}
+
+//双击IPC列表中的IPC
+void CMultiRobotDlg::OnLbnDblclkList1()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	theApp.seleteimshow = m_IPClist.GetCurSel();
+}
+
+
+void CMultiRobotDlg::OnBnClickedCheck3()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	UpdateData(true);
+	WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+	if (m_showimg == true)
+	{
+		theApp.seleteimshow = -2;
+	}
+	else
+	{
+		theApp.seleteimshow = 0;
+	}
+	ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 }

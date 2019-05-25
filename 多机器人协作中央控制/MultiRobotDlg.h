@@ -109,6 +109,10 @@ public:
 	
 	afx_msg void Onvision();
 	afx_msg void OnAddIPC();
+	afx_msg void OnLbnDblclkList1();
+	// 显示与不显示监控
+	BOOL m_showimg;
+	afx_msg void OnBnClickedCheck3();
 };
 
 //核心！！！！！
