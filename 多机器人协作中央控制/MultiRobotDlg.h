@@ -113,6 +113,7 @@ public:
 	// 显示与不显示监控
 	BOOL m_showimg;
 	afx_msg void OnBnClickedCheck3();
+	afx_msg void OnTest_toPoint();
 };
 
 //核心！！！！！
@@ -130,3 +131,6 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p);
 //显示线程
 DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p);
 void map_mouse_callback(int event, int x, int y, int flags, void* param); //显示线程中的鼠标回调函数
+
+//任务执行线程
+DWORD WINAPI taskrun_ThreadFun(LPVOID p);

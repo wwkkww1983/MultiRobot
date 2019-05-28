@@ -47,6 +47,19 @@ public:
 
 	Size showsize;//监控显示窗口的大小
 
+
+//任务！
+	struct task
+	{
+		int taskname; //1代表to point任务
+		float x;
+		float y;
+	};
+	vector<task> taskqueue;//任务队列，暂时是1号机器人的任务队列。
+						   
+	HANDLE hTaskMutex;//用于多线程 互斥锁,对以上变量进行加锁。
+	HANDLE hTaskrunThread;//任务执行线程线程句柄
+	DWORD TaskrunThreadID;//任务执行线程线程ID
 	DECLARE_MESSAGE_MAP()
 };
 

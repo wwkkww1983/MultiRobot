@@ -132,6 +132,7 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_COMMAND(ID_32780, &CMultiRobotDlg::OnAddIPC)
 	ON_LBN_DBLCLK(IDC_LIST1, &CMultiRobotDlg::OnLbnDblclkList1)
 	ON_BN_CLICKED(IDC_CHECK3, &CMultiRobotDlg::OnBnClickedCheck3)
+	ON_COMMAND(ID_32782, &CMultiRobotDlg::OnTest_toPoint)
 END_MESSAGE_MAP()
 
 
@@ -230,6 +231,9 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	//
 	printd("初始化成功");
 	printd("开始运作");
+
+	//开启任务执行线程
+	//theApp.hTaskrunThread = CreateThread(NULL, 0, taskrun_ThreadFun, NULL, 0, &theApp.TaskrunThreadID);
 
 	
 
@@ -801,7 +805,79 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
 }
 
 
+//任务执行线程,测试中
+DWORD WINAPI taskrun_ThreadFun(LPVOID p)
+{
+	int index = 1;
+	Point2f lp; float theta;
+	Point2f lpo;
+	if (theApp.robotServer.getRobotListNum() >= 1 && theApp.taskqueue.size() > 0)
+	{
+		//读取任务队列并解析
+		if (theApp.taskqueue[0].taskname == 1)
+		{
+			lpo.x = theApp.taskqueue[0].x; lpo.y = theApp.taskqueue[0].y;
 
+			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+			lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
+			theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]);
+			float dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+			while((abs(dtheta))>5)
+			{
+				WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+				objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+				lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
+				theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]);
+				dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x);
+
+				theApp.robotServer.robotlist[index].move(0, dtheta*0.005);
+				ReleaseMutex(theApp.robotServer.hMutex);//解锁
+				ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+				Sleep(100);
+			}
+			Point2f ds = lpo - lp;
+			float d = sqrt(ds.x*ds.x + ds.y*ds.y);
+			while (d>0.001)
+			{
+				WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+				objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+				lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
+				theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]);
+				dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x);
+				ds = lpo - lp;
+				d = sqrt(ds.x*ds.x + ds.y*ds.y);
+
+				theApp.robotServer.robotlist[index].move(d*0.15, dtheta*0.005);
+				ReleaseMutex(theApp.robotServer.hMutex);//解锁
+				ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+				Sleep(100);
+			}
+
+		}
+		else
+		{
+			Sleep(100);
+		}
+		//删除任务队列
+		std::vector<CMultiRobotApp::task>::iterator iter = theApp.taskqueue.begin();
+		theApp.taskqueue.erase(iter);
+	}
+	else
+	{
+		Sleep(100);
+	}
+	return 0;
+
+}
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 								MFC函数
@@ -1371,4 +1447,16 @@ void CMultiRobotDlg::OnBnClickedCheck3()
 		theApp.seleteimshow = 0;
 	}
 	ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+}
+
+
+void CMultiRobotDlg::OnTest_toPoint()
+{
+	// TODO: 在此添加命令处理程序代码
+	CMultiRobotApp::task too;
+	too.taskname = 1; too.x = 0; too.y = 0;
+
+	WaitForSingleObject(theApp.hTaskMutex, INFINITE);//锁挂
+	theApp.taskqueue.push_back(too);
+	ReleaseMutex(theApp.hTaskMutex);//解锁
 }
