@@ -1,4 +1,6 @@
 {
-    "IPport": 6678,
-    "imshowSize": "1280x720"
+  "IPport": 6678,
+  "imshowSize": "1280x720",
+  "movecompFlag": 1
+
 }

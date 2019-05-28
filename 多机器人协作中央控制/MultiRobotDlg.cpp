@@ -182,6 +182,16 @@ BOOL CMultiRobotDlg::OnInitDialog()
 		AfxMessageBox(_T("服务器初始化失败"));
 	}
 	theApp.robotServer.hMutex = CreateMutex(NULL, FALSE, NULL);
+	//监控显示的大小
+	if (theApp.config["imshowSize"] == "1280x720")
+	{
+		theApp.showsize = Size(1280, 720);
+	}
+	else if(theApp.config["imshowSize"] == "1920x1080")
+	{
+		theApp.showsize = Size(1920, 1080);
+	}
+
 	//开启监听线程
 	theApp.robotServer.hListenThread = CreateThread(NULL, 0, ListenAcceptThreadFun, NULL, 0, &theApp.robotServer.ListenThreadID);
 	//设置对话框刷新时间
@@ -421,7 +431,7 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		//（2）如果是运动学估计算法，来估计姿态位置.
 		//刷新方向
 		whilect++;
-		if (theApp.visionLSys.estimation_Algorithm == 1 && whilect>10)
+		if (theApp.visionLSys.estimation_Algorithm == 1 && whilect>2)
 		{
 			whilect = 0;
 			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
@@ -438,13 +448,14 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 					ds.y = casheobj[objindex_new].coordinate3D[1] - lastobj_estim[objindex_last].coordinate3D[1];
 					dsl = sqrt(ds.x*ds.x + ds.y*ds.y);
 					//开始运动学姿态估计算法
-					if (move_flag==0 && dsl>0.01)
+					float robotv=theApp.robotServer.robotlist[i].pvw.v[CasheQueue_MAXSIZE-1];
+					if (move_flag==0 && robotv>=0.1)
 					{
 						move_flag = 1;
 						//theApp.robotServer.robotlist[i].initIMU();
 						//dir_st = dir_now;
 					}
-					else if(move_flag==1 && dsl<=0.01)
+					else if(move_flag==1 && robotv <0.1)
 					{
 						move_flag = 0;
 						theApp.robotServer.robotlist[i].initIMU();
@@ -472,7 +483,8 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 					}
 					else if(move_flag==1)
 					{
-						dir_now = atan2(ds.y, ds.x)*180/3.14159;
+						if(dsl>0.01)
+							dir_now = atan2(ds.y, ds.x)*180/3.14159;
 					}
 					
 
@@ -542,7 +554,6 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 		lastobj = casheobj;
 		
-
 	}
 
 	return 0;
@@ -581,12 +592,13 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 					Mat showimg= theApp.IPCshowImg[j].clone();
 					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
-
+					
 					Vec3d rvecs, tvecs;
 					Rodrigues(theApp.visionLSys.IPC[j].RwMatrix, rvecs);
 					tvecs = theApp.visionLSys.IPC[j].TwVec;
 					cv::aruco::drawAxis(showimg, theApp.visionLSys.IPC[j].cameraMatrix, theApp.visionLSys.IPC[j].distCoeffs, rvecs, tvecs, 0.5);
 
+					resize(showimg, showimg, theApp.showsize);
 					cv::imshow("outimg" + istr, showimg);
 				}
 			}
@@ -603,7 +615,7 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 			Rodrigues(theApp.visionLSys.IPC[j].RwMatrix, rvecs);
 			tvecs = theApp.visionLSys.IPC[j].TwVec;
 			cv::aruco::drawAxis(showimg, theApp.visionLSys.IPC[j].cameraMatrix, theApp.visionLSys.IPC[j].distCoeffs, rvecs, tvecs, 0.5);
-
+			resize(showimg, showimg, theApp.showsize);
 			cv::imshow("outimg", showimg);
 		}
 		else if(theApp.seleteimshow==-2)

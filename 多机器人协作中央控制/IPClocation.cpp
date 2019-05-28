@@ -335,7 +335,7 @@ bool IPClocation::setWorld()
 		Mat image, imageCopy;
 		//从相机采样
 		IPC[ipci].cap >> image;
-		resize(image, imageCopy, Size(1280, 720));
+		resize(image, imageCopy, proimgsize);
 
 		//开始计算
 		vector<vector<Point2f> > corners;
@@ -376,7 +376,7 @@ Mat IPClocation::getIPCARPimage(int index)
 {
 	Mat img;
 	IPC[index].cap >> img;
-	resize(img, img, Size(1280, 720));
+	resize(img, img, proimgsize);
 	//相机坐标系的位姿信息
 	vector<int> ids;
 	double starttime = cv::getTickCount();//计时
@@ -524,10 +524,10 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex)
 	Mat imageCopy;
 	Ptr<aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(ARtag_dict);
 
-	//resize(img, imageCopy, Size(1280, 720));
+	resize(img, imageCopy, proimgsize);
 
 	
-	cv::aruco::detectMarkers(img, dictionary, corners, ids);
+	cv::aruco::detectMarkers(imageCopy, dictionary, corners, ids);
 	// if at least one marker detected 
 	if (ids.size() > 0)
 	{
@@ -645,11 +645,10 @@ std::vector<IPCobj> IPClocation::location(Mat img, int IPCindex, Mat &outimg)
 
 	Mat imageCopy;
 	Ptr<aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(ARtag_dict);
-	outimg = img.clone();
-	//resize(img, imageCopy, Size(1280, 720));
+	resize(img, imageCopy, proimgsize);
+	outimg = imageCopy.clone();
 
-
-	cv::aruco::detectMarkers(img, dictionary, corners, ids);
+	cv::aruco::detectMarkers(imageCopy, dictionary, corners, ids);
 	// if at least one marker detected 
 	if (ids.size() > 0)
 	{
@@ -789,7 +788,7 @@ std::vector<IPCobj> IPClocation::location(int IPCindex)
 {
 	Mat img;
 	IPC[IPCindex].cap >> img;
-	resize(img, img, Size(1280, 720));
+	resize(img, img, proimgsize);
 	vector<IPCobj> retobj = location(img, IPCindex);
 	return retobj;
 }
@@ -819,10 +818,10 @@ std::vector<IPCobj> IPClocation::locationMat(Mat img, int IPCindex)
 	Mat imageCopy;
 	Ptr<aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(ARtag_dict);
 
-	//resize(img, imageCopy, Size(1280, 720));
+	resize(img, imageCopy, proimgsize);
 
 
-	cv::aruco::detectMarkers(img, dictionary, corners, ids);
+	cv::aruco::detectMarkers(imageCopy, dictionary, corners, ids);
 	// if at least one marker detected 
 	if (ids.size() > 0)
 	{
