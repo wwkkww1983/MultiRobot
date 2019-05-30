@@ -1,6 +1,9 @@
 {
   "IPport": 6678,
   "imshowSize": "1280x720",
-  "movecompFlag": 1
+  "movecompFlag": 0, //运动补偿 0关 1开
+  "AimibotIP": "192.168.1.150",
+  "AimibotIPport": 20000,    //
+  "estimation_Algorithm": 0 //如果是多相机融合定位，姿态估计算法用什么。0用AR姿态估计 1用运动学估计
 
 }

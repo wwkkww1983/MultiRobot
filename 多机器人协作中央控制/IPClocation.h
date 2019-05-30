@@ -4,10 +4,9 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.8
+版  本：beta 0.9
 更  改：
-	1、改进locationMat函数，增加了姿态估计功能
-	2、calculateAllObjection 函数 提供了了为AR估计姿态算法功能的支持。
+1、增加地图显示id号功能
 */
 
 #pragma once

@@ -2,10 +2,9 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.4
+版  本：beta 0.6
 更  新：
-1、添加CasheQueuevw类，主要用于缓存角速度与线速度采样值。并且提供积分接口，以及计算位移变化量接口。并且添加变量在robot中。
-2、添加了opencv库，并且注释掉了std（主要是bind会被重加载）。
+1、增加爱米家机器人的支持
 */
 
 
@@ -62,6 +61,185 @@ enum robot_connectStatus_ret
 
  
 
+/*******************************************************************************
+* kobuki协议指令数据的结构体与类
+*******************************************************************************/
+
+typedef struct _StruRunControl
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned short speed;
+	unsigned short radius;
+}StruRunControl;
+
+typedef struct _StruSound
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned short note;
+	unsigned char duration;
+
+}StruSound;
+
+
+typedef struct _StruSoundSeq
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned char SequenceNumber;
+
+}StruSoundSeq;
+
+typedef struct _StruPower
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned short PowerFlags;
+
+}StruPower;
+
+typedef struct _StruExtraReq
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned short ReqFlags;
+
+}StruExtraReq;
+
+typedef struct _StruNormolInput
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned short Flags;
+
+}StruNormolInput;
+
+typedef struct _StruNetModel
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned char STA[3];
+
+}StruNetModel;
+
+typedef struct _StruWifID
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned char ids[100];
+
+}StruWifID;
+
+typedef struct _StruWifPWD
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned char ids[100];
+
+}StruWifPWD;
+
+typedef struct _StruCommincateModel
+{
+	unsigned char identifier;
+	unsigned char lenth;
+	unsigned char date[4];
+
+}StruCommincateModel;
+
+typedef struct _StruFeedBackIndentifer
+{
+	unsigned short Timestamp;
+	unsigned char Bumper;
+	unsigned char WheelDrop;
+	unsigned char Cliff;
+	unsigned short LeftEncoder;
+	unsigned short RightEncode;
+	unsigned char LeftPWM;
+	unsigned char RightPWM;
+	unsigned char Button;
+	unsigned char Charge;
+	unsigned short int Battery;
+	unsigned char OverCurrentFlags;
+
+}StruFeedBackIndentifer;
+
+typedef struct _StruInertialSensor
+{
+	short Angle;
+	short AngleRate;
+	unsigned char Unused[3];
+
+}StruInertialSensor;
+
+typedef struct _StruCliffSensor
+{
+	unsigned short RightCliff;
+	unsigned short CentralCliff;
+	unsigned short LeftCliff;
+
+}StruCliffSensor;
+
+typedef  struct _StruMotor
+{
+	short LeftMotor;
+	short RightMotor;
+}StruMotor;
+
+typedef struct _StruHardVer
+{
+	unsigned char Patch;
+	unsigned char Minor;
+	unsigned char Major;
+	unsigned char unused;
+}StruHardVer;
+
+typedef struct _StruFirmWare
+{
+	unsigned char Patch;
+	unsigned char Minor;
+	unsigned char Major;
+	unsigned char unused;
+
+}StruFirmWare;
+
+typedef struct _Stru3DgyroScope
+{
+	unsigned char FrameID;
+	unsigned char FollowLenth;
+	struct {
+		unsigned short x_axis;
+		unsigned short y_axis;
+		unsigned short z_axis;
+	}RawGyro[100];
+}Stru3DgyroScope;
+
+
+
+typedef struct _StruUDID
+{
+	unsigned int UDID0;
+	unsigned int UDID1;
+	unsigned int UDID2;
+
+}StruUDID;
+
+
+
+typedef struct _StruUltrasonicData
+{
+	unsigned short DISL1;
+	unsigned short DISL2;
+	unsigned short DISL3;
+	unsigned short DISL4;
+	unsigned short DISL5;
+
+}StruUltrasonicData;
+
+typedef struct _StruRobotID
+{
+	unsigned char  id;
+}StruRobotID;
 
 
 
@@ -185,8 +363,25 @@ public://接口
 
 
 };
+/******************************************************************************
+* 爱米家机器人返回数据类
+*******************************************************************************/
+class ClsRecvRobotInfo
+{
+public:
+	StruFeedBackIndentifer feedBackIndentifer;
+	StruInertialSensor InertialSensor;
+	StruCliffSensor CliffSensor;
+	StruMotor Motor;
+	StruHardVer HardVer;
+	StruFirmWare irmWare;
+	Stru3DgyroScope DgyroScope;
+	StruUDID UDID;
+	StruUltrasonicData  UltrasonicData;
+	StruRobotID RobotID;
 
-
+	void init(char *buf, int length);
+};
 /*******************************************************************************
 * 定义机器人类
 *******************************************************************************/
@@ -231,8 +426,55 @@ public:
 	uint8_t getTorque();
 	void initIMU(void);
 
+};
+/*******************************************************************************
+* 定义aimijia机器人类
+*******************************************************************************/
+class AimiRobot
+{
+public:
+	bool init(const char* ip, int port);
+	int Connect();//阻塞连接
+
+private:
+	//电池电量
+	int batteryVolt;
+
+
+
+public:
+	//专门为爱米家机器人开辟的线程
+	HANDLE hThread;
+	DWORD hThreadID;
+	HANDLE hMutex;
+
+	//网络连接状态
+	robot_connectStatus_ret connectStatus;
+	//机器人的ID号
+	uint8_t robotID;
+	//机器人的sock信息
+	struct sockaddr_in socksin;
+	//该机器人的通讯套接字
+	SOCKET robotsock;
+	//机器人状态，包括ID号
+	ClsRecvRobotInfo robotInfo;
+
+
+	//改变机器人运动
+	float v = 0;//机器人线速度大小,在这里作为一个状态值，是可以通过外部改变的。
+	float w = 0;//机器人角速度大小
+
+	//定位补偿估计的参数
+	CasheQueuevw pvw;//线速度和角速度，这是要实时更新的队列缓存。
+
+	/*  func   */
+
+	INT8 move();//通过vw变量，来改变机器人的运动速度。
+	INT8 updateInfo();
+	
 
 };
+
 
 /*******************************************************************************
 * 定义通讯套接字类:监听服务器
@@ -244,6 +486,7 @@ public:
 	//ROBOTServer();
 	void init(int port);
 
+
 private:
 	ServerStatus_ret sock_Status; //存储本类是否创建成功
 	
@@ -251,6 +494,7 @@ private:
 public:
 	SOCKET ServerSock; //服务器的套接字，核心变量
 	std::vector<robot> robotlist;//用于存储已经在通讯列表中的机器人，可以对这些机器人进行通讯控制
+	AimiRobot aimirobot;//aimiplus机器人连接套接字
 	//用于多线程 监听线程
 	HANDLE hListenThread;
 	DWORD ListenThreadID;

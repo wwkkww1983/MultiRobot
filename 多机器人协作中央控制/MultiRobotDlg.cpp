@@ -73,6 +73,7 @@ CMultiRobotDlg::CMultiRobotDlg(CWnd* pParent /*=NULL*/)
 	, m_direction(0)
 	, m_delaytime(0)
 	, m_showimg(FALSE)
+	, m_aimibotID(0)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -108,6 +109,7 @@ void CMultiRobotDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT16, m_delaytime);
 	DDX_Control(pDX, IDC_EDIT17, m_printout);
 	DDX_Check(pDX, IDC_CHECK3, m_showimg);
+	DDX_Text(pDX, IDC_EDIT18, m_aimibotID);
 }
 
 BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
@@ -192,6 +194,9 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	{
 		theApp.showsize = Size(1920, 1080);
 	}
+	theApp.config["movecompFlag"] >> theApp.movecompFlag;
+	theApp.config["estimation_Algorithm"] >> theApp.visionLSys.estimation_Algorithm;
+
 
 	//开启监听线程
 	theApp.robotServer.hListenThread = CreateThread(NULL, 0, ListenAcceptThreadFun, NULL, 0, &theApp.robotServer.ListenThreadID);
@@ -234,6 +239,9 @@ BOOL CMultiRobotDlg::OnInitDialog()
 
 	//开启任务执行线程
 	//theApp.hTaskrunThread = CreateThread(NULL, 0, taskrun_ThreadFun, NULL, 0, &theApp.TaskrunThreadID);
+
+	//开启爱米家机器人线程
+	theApp.robotServer.aimirobot.hThread = CreateThread(NULL, 0, aimipuls_ThreadFun, NULL, 0, &theApp.robotServer.aimirobot.hThreadID);
 
 	
 
@@ -330,6 +338,7 @@ DWORD WINAPI ListenAcceptThreadFun(LPVOID p)
 			//解锁
 			ReleaseMutex(theApp.robotServer.hMutex);
 		}
+
 	}
 	return 0;
 
@@ -622,10 +631,11 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 			resize(showimg, showimg, theApp.showsize);
 			cv::imshow("outimg", showimg);
 		}
-		else if(theApp.seleteimshow==-2)
+		else
 		{
-			destroyAllWindows();
+			destroyWindow("outimg");
 		}
+	
 
 
 		//（5）显示地图obj
@@ -647,6 +657,11 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 			cv::setMouseCallback("showobj", map_mouse_callback, &pra_mouseCall);
 
 		}
+		else
+		{
+			destroyWindow("showobj");
+		}
+	
 		int key = waitKey(10);
 
 	}
@@ -804,6 +819,35 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
 	return 0;
 }
 
+/*--------------------单独为aimi机器人开辟线程-----------------------*/
+DWORD WINAPI aimipuls_ThreadFun(LPVOID p)
+{
+	string aimiipstr;
+	theApp.config["AimibotIP"] >> aimiipstr;
+	const char *ip = aimiipstr.c_str();
+	int aimiport;
+	theApp.config["AimibotIPport"] >> aimiport;
+
+	theApp.robotServer.aimirobot.init(ip, aimiport);
+
+	while (theApp.ThreadOn)
+	{
+		theApp.robotServer.aimirobot.Connect();
+
+		while (theApp.robotServer.aimirobot.connectStatus>0)
+		{
+			WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+			theApp.robotServer.aimirobot.updateInfo();
+			theApp.robotServer.aimirobot.move();
+			ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+
+			Sleep(100);
+		}
+	}
+	return 0;
+	
+}
+
 
 //任务执行线程,测试中
 DWORD WINAPI taskrun_ThreadFun(LPVOID p)
@@ -811,69 +855,77 @@ DWORD WINAPI taskrun_ThreadFun(LPVOID p)
 	int index = 1;
 	Point2f lp; float theta;
 	Point2f lpo;
-	if (theApp.robotServer.getRobotListNum() >= 1 && theApp.taskqueue.size() > 0)
+
+	while (true)
 	{
-		//读取任务队列并解析
-		if (theApp.taskqueue[0].taskname == 1)
+
+
+		if (theApp.robotServer.getRobotListNum() >= 1 && theApp.taskqueue.size() > 0)
 		{
-			lpo.x = theApp.taskqueue[0].x; lpo.y = theApp.taskqueue[0].y;
-
-			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-			int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
-			lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
-			theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]);
-			float dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x);
-			ReleaseMutex(theApp.robotServer.hMutex);//解锁
-			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
-
-			while((abs(dtheta))>5)
+			//读取任务队列并解析
+			if (theApp.taskqueue[0].taskname == 1)
 			{
+				lpo.x = theApp.taskqueue[0].x; lpo.y = theApp.taskqueue[0].y;
+
 				WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-				objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+				int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
 				lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
-				theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]);
-				dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x);
-
-				theApp.robotServer.robotlist[index].move(0, dtheta*0.005);
+				theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0])*180/3.14159;
+				float dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
 				ReleaseMutex(theApp.robotServer.hMutex);//解锁
 				ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
-				Sleep(100);
+
+				while ((abs(dtheta)) > 5)
+				{
+					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+					objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
+					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
+					dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
+
+					theApp.robotServer.robotlist[index].move(0, dtheta*0.005);
+					ReleaseMutex(theApp.robotServer.hMutex);//解锁
+					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+					Sleep(100);
+				}
+				Point2f ds = lpo - lp;
+				float d = sqrt(ds.x*ds.x + ds.y*ds.y);
+				while (d > 0.001)
+				{
+					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+					objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
+					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
+					dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
+					ds = lpo - lp;
+					d = sqrt(ds.x*ds.x + ds.y*ds.y);
+
+					theApp.robotServer.robotlist[index].move(d*0.15, dtheta*0.005);
+					ReleaseMutex(theApp.robotServer.hMutex);//解锁
+					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+					Sleep(100);
+				}
+
 			}
-			Point2f ds = lpo - lp;
-			float d = sqrt(ds.x*ds.x + ds.y*ds.y);
-			while (d>0.001)
+			else
 			{
-				WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-				objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
-				lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
-				theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]);
-				dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x);
-				ds = lpo - lp;
-				d = sqrt(ds.x*ds.x + ds.y*ds.y);
-
-				theApp.robotServer.robotlist[index].move(d*0.15, dtheta*0.005);
-				ReleaseMutex(theApp.robotServer.hMutex);//解锁
-				ReleaseMutex(theApp.visionLSys.hMutex);//解锁
-
 				Sleep(100);
 			}
-
+			//删除任务队列
+			std::vector<CMultiRobotApp::task>::iterator iter = theApp.taskqueue.begin();
+			theApp.taskqueue.erase(iter);
 		}
 		else
 		{
 			Sleep(100);
 		}
-		//删除任务队列
-		std::vector<CMultiRobotApp::task>::iterator iter = theApp.taskqueue.begin();
-		theApp.taskqueue.erase(iter);
-	}
-	else
-	{
-		Sleep(100);
+
 	}
 	return 0;
 
@@ -932,6 +984,17 @@ void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 		//解锁
 		ReleaseMutex(theApp.robotServer.hMutex);
 
+		//查看爱米家机器人连接状态
+		WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+		if (theApp.robotServer.aimirobot.connectStatus > 0)
+		{
+			m_aimibotID = theApp.robotServer.aimirobot.robotInfo.RobotID.id;
+		}
+		else
+		{
+			m_aimibotID = -1;
+		}
+		ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
 		UpdateData(false);
 	}
 	case 2://定时刷新机器的线速度角速度
@@ -1005,14 +1068,9 @@ BOOL CMultiRobotDlg::PreTranslateMessage(MSG* pMsg)
 	
 	if (pMsg->message == WM_KEYDOWN)
 	{
-		if (keyflag == 0)
+		if (aimibotkeyflag == 0)
 		{
-			////查看当前选择机器人。
-			int index= m_RobotList.GetCurSel();
-			if (index < 0)
-			{
-				return CDialogEx::PreTranslateMessage(pMsg);
-			}
+
 			//检查WSAD时用什么参数来跑
 			float ilin, iang;
 			if (m_wsadFlag.GetCheck() == BST_CHECKED)
@@ -1028,54 +1086,131 @@ BOOL CMultiRobotDlg::PreTranslateMessage(MSG* pMsg)
 
 			switch (pMsg->wParam)
 			{
-			case 'W'://前进
-				
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
-				theApp.robotServer.robotlist[index].move(ilin, 0);
+			case VK_UP://前进
+
+				WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);//锁挂
+				theApp.robotServer.aimirobot.v = ilin; theApp.robotServer.aimirobot.w = 0;
 				//解锁
-				ReleaseMutex(theApp.robotServer.hMutex);	
+				ReleaseMutex(theApp.robotServer.aimirobot.hMutex);
+				aimibotkeyflag = 1;
 				break;
-			case 'S'://后退
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
-				theApp.robotServer.robotlist[index].move(-ilin, 0);
+			case VK_DOWN://后退
+				WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);//锁挂
+				theApp.robotServer.aimirobot.v = -ilin; theApp.robotServer.aimirobot.w = 0;
 				//解锁
-				ReleaseMutex(theApp.robotServer.hMutex);
+				ReleaseMutex(theApp.robotServer.aimirobot.hMutex);
+				aimibotkeyflag = 1;
 				break;
-			case 'A'://左
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
-				theApp.robotServer.robotlist[index].move(0, iang);
+			case VK_LEFT://左
+				WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);//锁挂
+				theApp.robotServer.aimirobot.v = ilin; theApp.robotServer.aimirobot.w = -ilin*1000;
 				//解锁
-				ReleaseMutex(theApp.robotServer.hMutex);
+				ReleaseMutex(theApp.robotServer.aimirobot.hMutex);
+				aimibotkeyflag = 1;
 				break;
-			case 'D'://右
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
-				theApp.robotServer.robotlist[index].move(0, -iang);
+			case VK_RIGHT://右
+				WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);//锁挂
+				theApp.robotServer.aimirobot.v = ilin; theApp.robotServer.aimirobot.w = ilin*1000;
 				//解锁
-				ReleaseMutex(theApp.robotServer.hMutex);
+				ReleaseMutex(theApp.robotServer.aimirobot.hMutex);
+				aimibotkeyflag = 1;
 				break;
 			default:
 				break;
 			}
+
+			
 		}
-		keyflag = 1;
+
+
+		if (keyflag == 0)
+		{
+			////查看当前选择机器人。
+			int index= m_RobotList.GetCurSel();
+			if (index >= 0)
+			{
+				//return CDialogEx::PreTranslateMessage(pMsg);
+				//检查WSAD时用什么参数来跑
+				float ilin, iang;
+				if (m_wsadFlag.GetCheck() == BST_CHECKED)
+				{
+					ilin = (float)m_movelin.GetPos() / 100.0;
+					iang = (float)m_moveang.GetPos() / 100.0;
+				}
+				else
+				{
+					ilin = 0.2;
+					iang = 1.8;
+				}
+
+				switch (pMsg->wParam)
+				{
+				case 'W'://前进
+
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
+					theApp.robotServer.robotlist[index].move(ilin, 0);
+					//解锁
+					ReleaseMutex(theApp.robotServer.hMutex);
+					keyflag = 1;
+					break;
+				case 'S'://后退
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
+					theApp.robotServer.robotlist[index].move(-ilin, 0);
+					//解锁
+					ReleaseMutex(theApp.robotServer.hMutex);
+					keyflag = 1;
+					break;
+				case 'A'://左
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
+					theApp.robotServer.robotlist[index].move(0, iang);
+					//解锁
+					ReleaseMutex(theApp.robotServer.hMutex);
+					keyflag = 1;
+					break;
+				case 'D'://右
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
+					theApp.robotServer.robotlist[index].move(0, -iang);
+					//解锁
+					ReleaseMutex(theApp.robotServer.hMutex);
+					keyflag = 1;
+					break;
+				default:
+					break;
+				}
+				
+			}
+			
+		}
+
+		
+		
 		return true;
 	}
 	else if (pMsg->message == WM_KEYUP)
 	{
-		////查看当前选择机器人。
-		int index = m_RobotList.GetCurSel();
-		if (index < 0)
+		if (pMsg->wParam == 'W'|| pMsg->wParam == 'S'||pMsg->wParam == 'A'||pMsg->wParam == 'D')
 		{
-			return CDialogEx::PreTranslateMessage(pMsg);
+			////查看当前选择机器人。
+			int index = m_RobotList.GetCurSel();
+			if (index < 0)
+			{
+				return CDialogEx::PreTranslateMessage(pMsg);
+			}
+			//锁挂
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.robotServer.robotlist[index].move(0, 0);
+			//解锁
+			ReleaseMutex(theApp.robotServer.hMutex);
+
+			keyflag = 0;
 		}
-		//锁挂
-		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-		theApp.robotServer.robotlist[index].move(0, 0);
-		//解锁
-		ReleaseMutex(theApp.robotServer.hMutex);
-
-		keyflag = 0;
-
+		else if(pMsg->wParam == VK_UP || pMsg->wParam == VK_DOWN ||pMsg->wParam == VK_RIGHT || pMsg->wParam == VK_LEFT)
+		{
+			WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+			theApp.robotServer.aimirobot.v = 0; theApp.robotServer.aimirobot.w = 0;
+			ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+			aimibotkeyflag = 0;
+		}
 	}
 
 	return CDialogEx::PreTranslateMessage(pMsg);
@@ -1378,14 +1513,6 @@ void CMultiRobotDlg::Onshow2Donoff()
 	{
 		theApp.show2Dflag = false;
 		m_Menu.CheckMenuItem(ID_32779, MF_BYCOMMAND | MF_UNCHECKED);
-		try
-		{
-			destroyWindow("showobj");
-		}
-		catch (const std::exception&)
-		{
-
-		}
 		
 	}
 	
@@ -1440,11 +1567,12 @@ void CMultiRobotDlg::OnBnClickedCheck3()
 	WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 	if (m_showimg == true)
 	{
-		theApp.seleteimshow = -2;
+		theApp.seleteimshow = 0;
 	}
 	else
 	{
-		theApp.seleteimshow = 0;
+		theApp.seleteimshow = -2;	
+		
 	}
 	ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 }
@@ -1453,10 +1581,7 @@ void CMultiRobotDlg::OnBnClickedCheck3()
 void CMultiRobotDlg::OnTest_toPoint()
 {
 	// TODO: 在此添加命令处理程序代码
-	CMultiRobotApp::task too;
-	too.taskname = 1; too.x = 0; too.y = 0;
-
-	WaitForSingleObject(theApp.hTaskMutex, INFINITE);//锁挂
-	theApp.taskqueue.push_back(too);
-	ReleaseMutex(theApp.hTaskMutex);//解锁
+	WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+	//theApp.robotServer.aimirobot.v = 0.1;
+	ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
 }

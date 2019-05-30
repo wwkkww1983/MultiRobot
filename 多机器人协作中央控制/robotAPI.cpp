@@ -2,10 +2,9 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.5
+版  本：beta 0.6
 更  新：
-	 1、改进了运动补偿算法，对速度进行了加权处理。
-	 2、对move函数的输入参数进行更改。为了适应实际机器人的结构。
+	 1、增加爱米家机器人的支持
 */
 
 
@@ -585,4 +584,205 @@ bool ROBOTServer::GetLocalAddress(std::string& strAddress)
 }
 
 
+bool AimiRobot::init(const char* ip, int port)
+{
+	//初始化WSA
+	WORD sockVersion = MAKEWORD(2, 2);
+	WSADATA data;
+	if (WSAStartup(sockVersion, &data) != 0)
+	{
+		return 0;
+	}
+	//创建套接字
+	robotsock = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (robotsock == INVALID_SOCKET)
+	{
+		printf("invalid socket !");
+		return 0;
+	}
 
+	//绑定IP和端口
+	socksin.sin_family = AF_INET;
+	socksin.sin_port = htons(port);
+	socksin.sin_addr.S_un.S_addr = inet_addr(ip);
+
+	//设置超时时间
+	int nNetTimeout = 500; //1秒
+	setsockopt(robotsock, SOL_SOCKET, SO_SNDTIMEO, (char *)&nNetTimeout, sizeof(int));
+	setsockopt(robotsock, SOL_SOCKET, SO_RCVTIMEO, (char *)&nNetTimeout, sizeof(int));
+	return 1;
+}
+
+int AimiRobot::Connect()
+{
+	while(connect(robotsock, (struct sockaddr *)&socksin, sizeof(socksin)) == SOCKET_ERROR)
+	{
+		printf("connect error !");
+	}
+	connectStatus = ROBOT_connectStatus_2Level;
+	return 1;
+}
+
+INT8 AimiRobot::move()
+{
+	short speed = v * 1000;
+	short radius;
+	if (w == 0)
+	{
+		radius = 0;
+	}
+	else
+	{
+		radius = speed / w;
+	}
+
+	std::vector<unsigned char> sendBytes;
+
+	unsigned char Header0 = 0xAA;
+	unsigned char Header1 = 0x55;
+	unsigned char length = 0x00;
+	unsigned char Checksun = 0x00;
+
+	std::vector<unsigned char>  RunBytes;
+	RunBytes.push_back(0x01);
+	RunBytes.push_back(0x04);
+
+	char buff[3] = { 0 };
+	memcpy(buff, &speed, 2);
+	RunBytes.push_back(buff[0]);
+	RunBytes.push_back(buff[1]);
+
+	memset(buff, 0, 3);
+	memcpy(buff, &radius, 2);
+	RunBytes.push_back(buff[0]);
+	RunBytes.push_back(buff[1]);
+
+	length = RunBytes.size();
+	RunBytes.insert(RunBytes.begin(), length);
+
+	for (int i = 0; i < RunBytes.size(); i++)
+	{
+		Checksun ^= RunBytes.at(i);
+	}
+
+	sendBytes.push_back(Header0);
+	sendBytes.push_back(Header1);
+	sendBytes.insert(sendBytes.end(), RunBytes.begin(), RunBytes.end());
+	sendBytes.push_back(Checksun);
+
+
+	char* sendData = new char[sendBytes.size() + 1];
+	for (size_t i = 0; i < sendBytes.size(); i++)
+	{
+		sendData[i] = sendBytes[i];
+	}
+	sendData[sendBytes.size()] = '\n';
+	int sendret = send(robotsock, sendData, 10, 0);
+
+	if (sendret <= 0)
+	{
+		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+		return -1;
+	}
+	else
+	{
+		return 1;
+	}
+
+	
+}
+
+void ClsRecvRobotInfo::init(char *buf, int length)
+{
+	int ct = 0;
+	while (ct<length)
+	{
+		if (buf[ct] == 1)
+		{
+			memcpy(&feedBackIndentifer, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 4)
+		{
+			memcpy(&InertialSensor, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 5)
+		{
+			memcpy(&CliffSensor, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 6)
+		{
+			memcpy(&Motor, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 10)
+		{
+			memcpy(&HardVer, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 11)
+		{
+			memcpy(&irmWare, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 13)
+		{
+			memcpy(&DgyroScope, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 19)
+		{
+			memcpy(&UDID, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 21)
+		{
+			memcpy(&UltrasonicData, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+		else if (buf[ct] == 23)
+		{
+			memcpy(&RobotID, buf + ct + 2, buf[ct + 1]);
+			ct = ct + buf[ct + 1] + 2;
+		}
+
+
+	}
+}
+
+INT8 AimiRobot::updateInfo()
+{
+	char recData[255];
+	int ret = recv(robotsock, recData, 255, 0);
+	if (ret <= 0)
+	{
+		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+		return -1;
+	}
+
+	unsigned char Header0 = 0;
+	unsigned char Header1 = 0;
+	unsigned char length = 0x00;
+	unsigned char Checksun = 0x00;
+
+	Header0 = recData[0]; Header1 = recData[1];
+	length = recData[2];
+	Checksun = recData[length + 3];
+	char* databytes = new char[length];
+
+	unsigned char cs = 0;
+	for (unsigned int i = 2; i < length + 3; i++)
+	{
+		cs ^= recData[i];
+	}
+	if (cs == Checksun && Header0 == 0xaa && Header1 == 0x55)
+	{
+		memcpy(databytes, recData + 3, length);
+		robotInfo.init(databytes, length);
+	}
+
+
+	return 1;
+}

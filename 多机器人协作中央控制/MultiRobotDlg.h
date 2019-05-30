@@ -46,6 +46,7 @@ public:
 
 
 	int keyflag = 0;//用于判断按键状态，是按下状态还是没按状态。0是没按
+	int aimibotkeyflag = 0;
 	
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 //	afx_msg void OnEnChangeEdit2();
@@ -114,6 +115,8 @@ public:
 	BOOL m_showimg;
 	afx_msg void OnBnClickedCheck3();
 	afx_msg void OnTest_toPoint();
+	// -1表示没连接
+	int m_aimibotID;
 };
 
 //核心！！！！！
@@ -131,6 +134,9 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p);
 //显示线程
 DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p);
 void map_mouse_callback(int event, int x, int y, int flags, void* param); //显示线程中的鼠标回调函数
+
+//单独为aimi机器人开辟线程
+DWORD WINAPI aimipuls_ThreadFun(LPVOID p);
 
 //任务执行线程
 DWORD WINAPI taskrun_ThreadFun(LPVOID p);
