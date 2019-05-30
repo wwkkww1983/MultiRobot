@@ -72,7 +72,7 @@ void directionDlg::OnNMClickTree1(NMHDR *pNMHDR, LRESULT *pResult)
 		m_readmedisplay.SetSel(0, -1);
 		m_readmedisplay.ReplaceSel(_T(""));
 		//添加内容
-		CString neirongstr = _T("机器人列表\r\n未加入内容");
+		CString neirongstr = _T("机器人列表\r\n会显示已经连上的turbot机器人，选上可以得到数据以及进行控制");
 		m_readmedisplay.ReplaceSel(neirongstr); 
 	}
 	else if(str=="机器人传感器数据")
@@ -90,7 +90,7 @@ void directionDlg::OnNMClickTree1(NMHDR *pNMHDR, LRESULT *pResult)
 		m_readmedisplay.SetSel(0, -1);
 		m_readmedisplay.ReplaceSel(_T(""));
 		//添加内容
-		CString neirongstr = _T("机器人运动操作\r\n未加入内容");
+		CString neirongstr = _T("机器人运动操作\r\nWSAD控制turbot机器人，选中机器人进行控制。\r\n上下左右控制爱米家机器人。");
 		m_readmedisplay.ReplaceSel(neirongstr);
 	}
 }
