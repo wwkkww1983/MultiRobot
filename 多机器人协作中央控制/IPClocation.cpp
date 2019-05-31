@@ -4,9 +4,9 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.9
+版  本：beta 1.0
 更  改：
-	1、增加地图显示id号功能
+	1、添加大机器人定位支持
 */
 
 #include "stdafx.h"
@@ -847,6 +847,52 @@ std::vector<IPCobj> IPClocation::locationMat(Mat img, int IPCindex)
 				cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[1][2] / 1000.0, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx, tvecsx);
 
 			//得到这些小号机器人相机坐标
+			for (size_t i = 0; i < idsx.size(); i++)
+			{
+				//定义一个IPCobj 用于记录物体信息
+				IPCobj newobj;
+				newobj.cls = IPCobj::Robot;
+				newobj.ID = idsx[i];
+				newobj.dimension = 2;
+				//开始进行坐标转化
+				newobj.coordinate2D = calculateCentre(cornersx[i]);
+				if (estimation_Algorithm == 0)
+				{
+					Mat rw; //存储物体方向
+					Mat Rs;//存储物体旋转矩阵
+					Mat re = Mat(Vec3d(1, 0, 0), true);;//
+					Rodrigues(rvecsx[i], Rs);
+					rw = IPC[IPCindex].RwMatrixI*Rs*re;//公式
+					if (rw.rows == 3 && rw.cols == 1)//如果正确就转化到direction3D
+					{
+						newobj.direction3D = rw;//?????
+					}
+				}
+				retobj.push_back(newobj);
+			}
+		}
+
+		
+
+		//**选取大号机器人的id和角点位置
+		rvecsx.clear(); tvecsx.clear(); idsx.clear(); cornersx.clear();
+		for (size_t i = 0; i < ids.size(); i++)
+		{
+			if (ids[i] >= AR_ID_distribList[0][0] && ids[i] <= AR_ID_distribList[0][1])
+			{
+				//找到了大号机器人id
+				idsx.push_back(ids[i]);
+				cornersx.push_back(corners[i]);
+			}
+		}
+		if (idsx.size() > 0)
+		{
+
+			//对这些大号机器人进行姿态估计
+			if (estimation_Algorithm == 0)
+				cv::aruco::estimatePoseSingleMarkers(cornersx, (float)AR_ID_distribList[0][2] / 1000.0, IPC[IPCindex].cameraMatrix, IPC[IPCindex].distCoeffs, rvecsx, tvecsx);
+
+			//得到这些大号机器人相机坐标
 			for (size_t i = 0; i < idsx.size(); i++)
 			{
 				//定义一个IPCobj 用于记录物体信息

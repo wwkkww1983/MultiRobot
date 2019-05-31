@@ -237,13 +237,24 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	printd("初始化成功");
 	printd("开始运作");
 
-	//开启任务执行线程
-	//theApp.hTaskrunThread = CreateThread(NULL, 0, taskrun_ThreadFun, NULL, 0, &theApp.TaskrunThreadID);
+	//开启爱米家机器人任务执行线程
+	theApp.haimiTaskMutex = CreateMutex(NULL, FALSE, NULL);
+	theApp.haimiTaskrunThread = CreateThread(NULL, 0, aimiTaskrun_ThreadFun, NULL, 0, &theApp.aimiTaskrunThreadID);
+
 
 	//开启爱米家机器人线程
+	theApp.robotServer.aimirobot.hMutex= CreateMutex(NULL, FALSE, NULL);
 	theApp.robotServer.aimirobot.hThread = CreateThread(NULL, 0, aimipuls_ThreadFun, NULL, 0, &theApp.robotServer.aimirobot.hThreadID);
 
-	
+	//开启小机器人任务执行线程
+	theApp.hTaskMutex= CreateMutex(NULL, FALSE, NULL);
+	for (int threadi = 0; threadi < 4; threadi++)
+	{
+		vector<CMultiRobotApp::task> newtaskq;
+		theApp.taskqueue.push_back(newtaskq);
+		theApp.hTaskrunThread[threadi]= CreateThread(NULL, 0, Taskrun_ThreadFun, (LPVOID)threadi, 0, &theApp.TaskrunThreadID[threadi]);
+	}
+
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -589,6 +600,7 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 		Mat img;
 	}pra_mouseCall;
 	pra_mouseCall.x = 2500; pra_mouseCall.y = 2500; pra_mouseCall.w = 2000;
+	float map_size = 800;
 
 	while (theApp.ThreadOn)
 	{
@@ -650,6 +662,38 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 			string stry = to_string(pra_mouseCall.y_mouse_t); stry = stry.substr(0, stry.size() - 3);
 			zbstr = "(" + strx + "," + stry + ")";
 			putText(showobj, zbstr, Point(pra_mouseCall.x_mouse, pra_mouseCall.y_mouse-4), FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 0), 1, 8);
+			//显示当前机器人走点任务的目标点，并且连接目标点和机器人
+			if (theApp.aimiTaskQueue.size() > 0 && theApp.aimiTaskQueue[0].taskname == 1)
+			{
+				Point2f tureptask, robotp;
+				WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+				tureptask.x = theApp.aimiTaskQueue[0].x; tureptask.y = theApp.aimiTaskQueue[0].y;
+				ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+
+				int aimiindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.aimirobot.robotInfo.RobotID.id);
+				if (aimiindex >= 0)
+				{
+					robotp.x = theApp.obj[aimiindex].coordinate3D[0]; robotp.y = theApp.obj[aimiindex].coordinate3D[1];
+					Point taskimgp, robotimgp;
+
+					//将真实坐标转换成屏幕坐标
+					taskimgp.x = (tureptask.x*(float)theApp.visionLSys.m2pix - pra_mouseCall.x + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall.w / 2) / ((float)pra_mouseCall.w / map_size);
+					taskimgp.y = (-tureptask.y*(float)theApp.visionLSys.m2pix - pra_mouseCall.y + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall.w / 2) / ((float)pra_mouseCall.w / map_size);
+					robotimgp.x = (robotp.x*(float)theApp.visionLSys.m2pix - pra_mouseCall.x + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall.w / 2) / ((float)pra_mouseCall.w / map_size);
+					robotimgp.y = (-robotp.y*(float)theApp.visionLSys.m2pix - pra_mouseCall.y + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall.w / 2) / ((float)pra_mouseCall.w / map_size);
+
+					//判断是否在屏幕内
+					if (taskimgp.x > 0 && taskimgp.x < showobj.cols && taskimgp.y>0 && taskimgp.y < showobj.rows &&
+						robotimgp.x>0 && robotimgp.x < showobj.cols && robotimgp.y>0 && robotimgp.y < showobj.rows)
+					{
+						line(showobj, taskimgp, robotimgp, Scalar(125, 255, 180), 2);
+						circle(showobj, taskimgp, 10, Scalar(125, 0, 180), -1);
+					}
+				}
+
+			}
+			
+
 			//显示地图
 			
 			cv::imshow("showobj", showobj);
@@ -775,6 +819,28 @@ void map_mouse_callback(int event, int x, int y, int flags, void* param)
 		}
 
 	}
+	else if(event== CV_EVENT_MBUTTONDOWN)//按下鼠标中间，对爱米家机器人发布走点任务。
+	{
+		float k = pra_mouseCall->w / map_size;
+		//计算真实坐标
+		Point2f turep;
+		turep.x = pra_mouseCall->x - theApp.visionLSys.getMapSize() / 2 - pra_mouseCall->w / 2 + x*k;
+		turep.y = -pra_mouseCall->y + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall->w / 2 - y*k;
+		turep.x = turep.x / (float)theApp.visionLSys.m2pix;
+		turep.y = turep.y / (float)theApp.visionLSys.m2pix;
+
+		//发布任务
+		WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+		CMultiRobotApp::task foo;
+		foo.taskname = 1; foo.x = turep.x; foo.y = turep.y;
+		theApp.aimiTaskQueue.push_back(foo);	
+		ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+		
+	}
+	else if(event == CV_EVENT_RBUTTONDOWN) //按下鼠标右键，对列表中选中的机器人发布走点任务。
+	{
+
+	}
 
 }
 /*--------------------IPC子处理线程-----------------------*/
@@ -849,77 +915,116 @@ DWORD WINAPI aimipuls_ThreadFun(LPVOID p)
 }
 
 
-//任务执行线程,测试中
-DWORD WINAPI taskrun_ThreadFun(LPVOID p)
+//爱米家机器人的任务线程
+DWORD WINAPI aimiTaskrun_ThreadFun(LPVOID p)
 {
 	int index = 1;
 	Point2f lp; float theta;
 	Point2f lpo;
 
+	////测试用，要删掉
+	/*AllocConsole();
+	freopen("CONOUT$", "w", stdout);*/
 	while (true)
 	{
-
-
-		if (theApp.robotServer.getRobotListNum() >= 1 && theApp.taskqueue.size() > 0)
+		if (theApp.robotServer.aimirobot.connectStatus > 0 && theApp.aimiTaskQueue.size() > 0)
 		{
 			//读取任务队列并解析
-			if (theApp.taskqueue[0].taskname == 1)
+			if (theApp.aimiTaskQueue[0].taskname == 1)
 			{
-				lpo.x = theApp.taskqueue[0].x; lpo.y = theApp.taskqueue[0].y;
-
-				WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-				WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-				int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
-				lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
-				theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0])*180/3.14159;
-				float dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
-				ReleaseMutex(theApp.robotServer.hMutex);//解锁
-				ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+				int st_flag=1;//记录机器人在执行次任务过程中的状态，1为找方向原地转圈，2为直走加偏航 0为完成任务
+				float dtheta;
+				Point2f ds;
+				float d;
+				lpo.x = theApp.aimiTaskQueue[0].x; lpo.y = theApp.aimiTaskQueue[0].y;
 
 
-				while ((abs(dtheta)) > 5)
+				while (st_flag)
 				{
+					//获取信息
 					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-					objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+					WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+					int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.aimirobot.robotInfo.RobotID.id);
+					if (objindex < 0) break;
 					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
 					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
 					dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
-
-					theApp.robotServer.robotlist[index].move(0, dtheta*0.005);
-					ReleaseMutex(theApp.robotServer.hMutex);//解锁
-					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
-
-					Sleep(100);
-				}
-				Point2f ds = lpo - lp;
-				float d = sqrt(ds.x*ds.x + ds.y*ds.y);
-				while (d > 0.001)
-				{
-					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
-					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
-					objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
-					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
-					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
-					dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
+					if (dtheta < -180) dtheta = 360 + dtheta;
+					else if (dtheta > 180) dtheta = dtheta - 360;
 					ds = lpo - lp;
 					d = sqrt(ds.x*ds.x + ds.y*ds.y);
-
-					theApp.robotServer.robotlist[index].move(d*0.15, dtheta*0.005);
-					ReleaseMutex(theApp.robotServer.hMutex);//解锁
+					ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
 					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
-					Sleep(100);
-				}
+					cout << "dtheta" << dtheta << endl;
+					cout << "d:" << d << endl;
 
+					//控制1
+					if (abs(dtheta) > 2 && st_flag==1)
+					{
+						
+						WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+						
+						float pt = 0.013;//转动pid系数
+						float phph = 30; //度数阈值，低于这个度数一一个恒定值控制
+						if (abs(dtheta) > phph)
+						{
+							theApp.robotServer.aimirobot.v = 0; theApp.robotServer.aimirobot.w = dtheta*pt*100;
+						}
+						else
+						{
+							theApp.robotServer.aimirobot.v = 0; theApp.robotServer.aimirobot.w = (dtheta / abs(dtheta)) * phph * pt*100;
+						}
+						ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+						
+					}
+					else if(abs(dtheta) < 2 && st_flag == 1)
+					{
+						st_flag = 2;
+					}
+					
+
+					//控制2
+					if (d > 0.05 && st_flag == 2)
+					{
+						
+						WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+
+						float pv = 0.2, ptt = 0.01; //pid系数
+						float phph2 = 0.3;//距离阈值，低于这个距离就采用恒定值控制
+						if (d > phph2)
+						{
+							theApp.robotServer.aimirobot.v = d*pv; theApp.robotServer.aimirobot.w = dtheta*ptt;
+						}
+						else
+						{
+							theApp.robotServer.aimirobot.v = phph2*pv; theApp.robotServer.aimirobot.w = dtheta*ptt;
+						}
+						ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+						
+					}
+					else if (abs(dtheta) > 5 && st_flag == 2 && d>0.2)
+					{
+						st_flag = 1;
+					}
+					
+
+					//判断距离结束任务
+					if (d < 0.05)
+					{
+						st_flag = 0;
+					}
+
+					Sleep(50);
+				}
+				
 			}
-			else
-			{
-				Sleep(100);
-			}
+			WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+			theApp.robotServer.aimirobot.v = 0; theApp.robotServer.aimirobot.w = 0;
+			ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
 			//删除任务队列
-			std::vector<CMultiRobotApp::task>::iterator iter = theApp.taskqueue.begin();
-			theApp.taskqueue.erase(iter);
+			std::vector<CMultiRobotApp::task>::iterator iter = theApp.aimiTaskQueue.begin();
+			theApp.aimiTaskQueue.erase(iter);
 		}
 		else
 		{
@@ -929,6 +1034,132 @@ DWORD WINAPI taskrun_ThreadFun(LPVOID p)
 	}
 	return 0;
 
+}
+
+//小机器人的任务线程
+DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
+{
+	int index = (int)p;
+	Point2f lp; float theta;
+	Point2f lpo;
+
+	////测试用，要删掉
+	/*AllocConsole();
+	freopen("CONOUT$", "w", stdout);*/
+	while (true)
+	{
+		if (theApp.robotServer.getRobotListNum() > index && theApp.taskqueue[index].size() > 0)
+		{
+
+			//读取任务队列并解析
+			if (theApp.taskqueue[index][0].taskname == 1)
+			{
+				int st_flag = 1;//记录机器人在执行次任务过程中的状态，1为找方向原地转圈，2为直走加偏航 0为完成任务
+				float dtheta;
+				Point2f ds;
+				float d;
+
+				lpo.x = theApp.taskqueue[index][0].x; lpo.y = theApp.taskqueue[index][0].y;
+
+
+
+				while (st_flag)
+				{
+					//获取信息
+					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+					int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+					if (objindex < 0) break;
+					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
+					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
+					dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
+					if (dtheta < -180) dtheta = 360 + dtheta;
+					else if (dtheta > 180) dtheta = dtheta - 360;
+					ds = lpo - lp;
+					d = sqrt(ds.x*ds.x + ds.y*ds.y);
+					ReleaseMutex(theApp.robotServer.hMutex);//解锁
+					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+					cout << "dtheta" << dtheta << endl;
+					cout << "d:" << d << endl;
+
+					//控制1
+					if (abs(dtheta) > 2 && st_flag == 1)
+					{
+
+						WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+
+						float pt = 0.006;//转动pid系数
+						float phph = 30; //度数阈值，低于这个度数一一个恒定值控制
+						if (abs(dtheta) > phph)
+						{
+							theApp.robotServer.robotlist[index].move(0, -dtheta*pt );
+						}
+						else
+						{
+							theApp.robotServer.robotlist[index].move(0, -(dtheta / abs(dtheta)) * phph * pt );
+						}
+						ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+					}
+					else if (abs(dtheta) < 2 && st_flag == 1)
+					{
+						st_flag = 2;
+					}
+
+
+					//控制2
+					if (d > 0.05 && st_flag == 2)
+					{
+
+						WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+
+						float pv = 0.2, ptt = 0.01; //pid系数
+						float phph2 = 0.3;//距离阈值，低于这个距离就采用恒定值控制
+						if (d > phph2)
+						{
+							theApp.robotServer.robotlist[index].move(d*pv, -dtheta*ptt);
+							//theApp.robotServer.aimirobot.v = d*pv; theApp.robotServer.aimirobot.w = dtheta*ptt;
+						}
+						else
+						{
+							theApp.robotServer.robotlist[index].move(phph2*pv, -dtheta*ptt);
+							//theApp.robotServer.aimirobot.v = phph2*pv; theApp.robotServer.aimirobot.w = dtheta*ptt;
+						}
+						ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+					}
+					else if (abs(dtheta) > 5 && st_flag == 2 && d>0.2)
+					{
+						st_flag = 1;
+					}
+
+
+					//判断距离结束任务
+					if (d < 0.05)
+					{
+						st_flag = 0;
+					}
+
+					Sleep(50);
+				}
+
+			}
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.robotServer.robotlist[index].move(0, 0);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+			//删除任务队列
+			std::vector<CMultiRobotApp::task>::iterator iter = theApp.taskqueue[index].begin();
+			theApp.taskqueue[index].erase(iter);
+		}
+		else
+		{
+			Sleep(100);
+		}
+
+	}
+
+	return 0;
 }
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1581,7 +1812,40 @@ void CMultiRobotDlg::OnBnClickedCheck3()
 void CMultiRobotDlg::OnTest_toPoint()
 {
 	// TODO: 在此添加命令处理程序代码
-	WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
-	//theApp.robotServer.aimirobot.v = 0.1;
-	ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+	//WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+	////theApp.robotServer.aimirobot.v = 0.1;
+	//CMultiRobotApp::task foo; 
+	//for (size_t i = 0; i < 10; i++)
+	//{
+	//	foo.taskname = 1; foo.x = 0.75; foo.y = 0.75;
+	//	theApp.aimiTaskQueue.push_back(foo);
+	//	foo.taskname = 1; foo.x = 0.75; foo.y = -0.75;
+	//	theApp.aimiTaskQueue.push_back(foo);
+	//	foo.taskname = 1; foo.x = -0.75; foo.y = -0.75;
+	//	theApp.aimiTaskQueue.push_back(foo);
+	//	foo.taskname = 1; foo.x = -0.75; foo.y = 0.75;
+	//	theApp.aimiTaskQueue.push_back(foo);
+	//}
+	//ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+
+
+	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+	
+	CMultiRobotApp::task foo; 
+	
+	for (size_t i = 0; i < 10; i++)
+	{
+		foo.taskname = 1; foo.x = 0.75; foo.y = 0.75;
+		theApp.taskqueue[0].push_back(foo);
+		foo.taskname = 1; foo.x = 0.75; foo.y = -0.75;
+		theApp.taskqueue[0].push_back(foo);
+		foo.taskname = 1; foo.x = -0.75; foo.y = -0.75;
+		theApp.taskqueue[0].push_back(foo);
+		foo.taskname = 1; foo.x = -0.75; foo.y = 0.75;
+		theApp.taskqueue[0].push_back(foo);
+	}
+	
+
+	ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
 }

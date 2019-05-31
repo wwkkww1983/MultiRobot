@@ -4,9 +4,9 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 0.9
+版  本：beta 1.0
 更  改：
-1、增加地图显示id号功能
+1、添加大机器人定位支持
 */
 
 #pragma once
@@ -161,7 +161,6 @@ private:
 
 	/*
 	@brief:画定位坐标系用的函数
-	@author:张猛
 	*/
 	void drawArrow(cv::Mat& img, Point p, Point2f dirc, float size);
 
@@ -298,8 +297,6 @@ public://输出函数接口
 
 	/*
 	*@brief：画出obj
-	@author:张猛
-	@time:3.4534ms x2700
 	*/
 	Mat paintObject(std::vector<IPCobj> input, Point2i lookCenter, int scale);
 	void initMap(std::string mapname);//初始化地图

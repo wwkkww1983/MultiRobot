@@ -55,11 +55,20 @@ public:
 		float x;
 		float y;
 	};
-	vector<task> taskqueue;//任务队列，暂时是1号机器人的任务队列。
+	vector<vector<task>> taskqueue;//任务队列，暂时是1号机器人的任务队列。
+
+	vector<task> aimiTaskQueue; //任务队列，暂时是爱米家机器人的任务队列。
 						   
-	HANDLE hTaskMutex;//用于多线程 互斥锁,对以上变量进行加锁。
-	HANDLE hTaskrunThread;//任务执行线程线程句柄
-	DWORD TaskrunThreadID;//任务执行线程线程ID
+	//爱米家机器人的控制任务
+	HANDLE haimiTaskMutex;//用于多线程 互斥锁,对以上变量进行加锁。
+	HANDLE haimiTaskrunThread;//任务执行线程线程句柄
+	DWORD aimiTaskrunThreadID;//任务执行线程线程ID
+
+	//小机器人控制任务
+	HANDLE hTaskMutex;//用于多线程 互斥锁,上变量进行加锁。
+	HANDLE hTaskrunThread[4];//任务执行线程线程句柄
+	DWORD TaskrunThreadID[4];//任务执行线程线程ID
+
 	DECLARE_MESSAGE_MAP()
 };
 
