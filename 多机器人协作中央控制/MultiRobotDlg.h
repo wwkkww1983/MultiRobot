@@ -143,3 +143,6 @@ DWORD WINAPI aimiTaskrun_ThreadFun(LPVOID p);
 
 //小机器人的任务线程
 DWORD WINAPI Taskrun_ThreadFun(LPVOID p);
+
+//多机协作中央调度程序
+//DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p);

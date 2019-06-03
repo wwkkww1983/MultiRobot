@@ -47,15 +47,21 @@ public:
 
 	Size showsize;//监控显示窗口的大小
 
+	int robotlist_checkIndex;//存储目前选中了robot列表中的第几个机器人。
+
 
 //任务！
 	struct task
 	{
-		int taskname; //1代表to point任务
+		//1代表to point任务
+		//2:倒退着走的任务，倒退着走到指定地点。
+		//3:转到指定角度
+		int taskname; 
 		float x;
 		float y;
+		int lf;//摆正姿态的时候是向左转还是向右转，左转为1 右为-1
 	};
-	vector<vector<task>> taskqueue;//任务队列，暂时是1号机器人的任务队列。
+	vector<vector<task>> taskqueue;//任务队列，移动有4个，按顺序对应着机器人列表中的机器人。
 
 	vector<task> aimiTaskQueue; //任务队列，暂时是爱米家机器人的任务队列。
 						   

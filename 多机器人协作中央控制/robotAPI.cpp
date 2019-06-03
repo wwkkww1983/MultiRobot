@@ -505,6 +505,10 @@ int ROBOTServer::Accept()
 	}
 	else
 	{
+		int timeout = 500; //3s
+		setsockopt(socket_of_client, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+		setsockopt(socket_of_client, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+	
 		robot robotnew(socket_of_client, c_sin);
 		robotlist.push_back(robotnew);
 
@@ -625,7 +629,7 @@ int AimiRobot::Connect()
 
 INT8 AimiRobot::move()
 {
-	short speed = v * 1000;
+	short speed = -v * 1000;
 	short radius;
 	if (w == 0)
 	{

@@ -364,7 +364,7 @@ DWORD WINAPI updataRobotStatusThreadFun(LPVOID p)
 	int robotindex = theApp.robotServer.findID(robotid);
 
 	//判断网络连接 断开则跳出循环
-	while (theApp.robotServer.robotlist[robotindex].connectStatus>0&& theApp.ThreadOn)
+	while (theApp.robotServer.robotlist[robotindex].connectStatus>0 && theApp.ThreadOn)
 	{
 		//updata 电压值
 		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
@@ -662,7 +662,7 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 			string stry = to_string(pra_mouseCall.y_mouse_t); stry = stry.substr(0, stry.size() - 3);
 			zbstr = "(" + strx + "," + stry + ")";
 			putText(showobj, zbstr, Point(pra_mouseCall.x_mouse, pra_mouseCall.y_mouse-4), FONT_HERSHEY_COMPLEX, 0.4, Scalar(0, 0, 0), 1, 8);
-			//显示当前机器人走点任务的目标点，并且连接目标点和机器人
+			//显示爱米家机器人走点任务的目标点，并且连接目标点和机器人
 			if (theApp.aimiTaskQueue.size() > 0 && theApp.aimiTaskQueue[0].taskname == 1)
 			{
 				Point2f tureptask, robotp;
@@ -687,15 +687,47 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 						robotimgp.x>0 && robotimgp.x < showobj.cols && robotimgp.y>0 && robotimgp.y < showobj.rows)
 					{
 						line(showobj, taskimgp, robotimgp, Scalar(125, 255, 180), 2);
-						circle(showobj, taskimgp, 10, Scalar(125, 0, 180), -1);
+						circle(showobj, taskimgp, 5, Scalar(125, 0, 180), -1);
 					}
 				}
 
 			}
-			
+			//显示小机器人走点任务的目标点，并且连接目标点和机器人
+			for (size_t tski = 0; tski < theApp.taskqueue.size(); tski++)
+			{
+				if (theApp.taskqueue[tski].size() > 0 && theApp.taskqueue[tski][0].taskname == 1)
+				{
+					Point2f tureptask, robotp;
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+					tureptask.x = theApp.taskqueue[tski][0].x; tureptask.y = theApp.taskqueue[tski][0].y;
+					ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+					int index = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[tski].robotID);
+					if (index >= 0)
+					{
+						robotp.x = theApp.obj[index].coordinate3D[0]; robotp.y = theApp.obj[index].coordinate3D[1];
+						Point taskimgp, robotimgp;
+
+						//将真实坐标转换成屏幕坐标
+						taskimgp.x = (tureptask.x*(float)theApp.visionLSys.m2pix - pra_mouseCall.x + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall.w / 2) / ((float)pra_mouseCall.w / map_size);
+						taskimgp.y = (-tureptask.y*(float)theApp.visionLSys.m2pix - pra_mouseCall.y + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall.w / 2) / ((float)pra_mouseCall.w / map_size);
+						robotimgp.x = (robotp.x*(float)theApp.visionLSys.m2pix - pra_mouseCall.x + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall.w / 2) / ((float)pra_mouseCall.w / map_size);
+						robotimgp.y = (-robotp.y*(float)theApp.visionLSys.m2pix - pra_mouseCall.y + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall.w / 2) / ((float)pra_mouseCall.w / map_size);
+
+						//判断是否在屏幕内
+						if (taskimgp.x > 0 && taskimgp.x < showobj.cols && taskimgp.y>0 && taskimgp.y < showobj.rows &&
+							robotimgp.x>0 && robotimgp.x < showobj.cols && robotimgp.y>0 && robotimgp.y < showobj.rows)
+						{
+							line(showobj, taskimgp, robotimgp, Scalar(125, 255, 180), 2);
+							circle(showobj, taskimgp, 5, Scalar(255, 0, 180), -1);
+						}
+					}
+
+				}
+			}
+
 
 			//显示地图
-			
 			cv::imshow("showobj", showobj);
 			pra_mouseCall.img = showobj;
 			cv::setMouseCallback("showobj", map_mouse_callback, &pra_mouseCall);
@@ -839,6 +871,24 @@ void map_mouse_callback(int event, int x, int y, int flags, void* param)
 	}
 	else if(event == CV_EVENT_RBUTTONDOWN) //按下鼠标右键，对列表中选中的机器人发布走点任务。
 	{
+		float k = pra_mouseCall->w / map_size;
+		//计算真实坐标
+		Point2f turep;
+		turep.x = pra_mouseCall->x - theApp.visionLSys.getMapSize() / 2 - pra_mouseCall->w / 2 + x*k;
+		turep.y = -pra_mouseCall->y + theApp.visionLSys.getMapSize() / 2 + pra_mouseCall->w / 2 - y*k;
+		turep.x = turep.x / (float)theApp.visionLSys.m2pix;
+		turep.y = turep.y / (float)theApp.visionLSys.m2pix;
+
+		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+		int rindex = theApp.robotlist_checkIndex;
+		ReleaseMutex(theApp.robotServer.hMutex);
+
+		if (rindex >= 0)
+		{
+			CMultiRobotApp::task foo;
+			foo.taskname = 1; foo.x = turep.x; foo.y = turep.y;
+			theApp.taskqueue[rindex].push_back(foo);
+		}
 
 	}
 
@@ -925,9 +975,14 @@ DWORD WINAPI aimiTaskrun_ThreadFun(LPVOID p)
 	////测试用，要删掉
 	/*AllocConsole();
 	freopen("CONOUT$", "w", stdout);*/
-	while (true)
+	while (theApp.ThreadOn)
 	{
-		if (theApp.robotServer.aimirobot.connectStatus > 0 && theApp.aimiTaskQueue.size() > 0)
+		WaitForSingleObject(theApp.haimiTaskMutex, INFINITE);//锁挂
+		WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+		bool task_stat = theApp.robotServer.aimirobot.connectStatus > 0 && theApp.aimiTaskQueue.size() > 0;
+		ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+		ReleaseMutex(theApp.haimiTaskMutex);//解锁
+		if (task_stat)
 		{
 			//读取任务队列并解析
 			if (theApp.aimiTaskQueue[0].taskname == 1)
@@ -1044,11 +1099,16 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 	Point2f lpo;
 
 	////测试用，要删掉
-	/*AllocConsole();
-	freopen("CONOUT$", "w", stdout);*/
-	while (true)
+	AllocConsole();
+	freopen("CONOUT$", "w", stdout);
+	while (theApp.ThreadOn)
 	{
-		if (theApp.robotServer.getRobotListNum() > index && theApp.taskqueue[index].size() > 0)
+		WaitForSingleObject(theApp.hTaskMutex, INFINITE);//锁挂
+		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+		bool task_stat = theApp.robotServer.getRobotListNum() > index && theApp.taskqueue[index].size() > 0;
+		ReleaseMutex(theApp.robotServer.hMutex);//解锁
+		ReleaseMutex(theApp.hTaskMutex);//解锁
+		if (task_stat)
 		{
 
 			//读取任务队列并解析
@@ -1061,15 +1121,19 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 
 				lpo.x = theApp.taskqueue[index][0].x; lpo.y = theApp.taskqueue[index][0].y;
 
-
-
 				while (st_flag)
 				{
 					//获取信息
 					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
 					int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
-					if (objindex < 0) break;
+					if (objindex < 0)
+					{
+						ReleaseMutex(theApp.robotServer.hMutex);//解锁
+						ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+						printf("error：Taskrun_ThreadFun：检测不到图片，停止任务");
+						break;
+					}
 					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
 					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
 					dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
@@ -1080,8 +1144,8 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 					ReleaseMutex(theApp.robotServer.hMutex);//解锁
 					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
-					cout << "dtheta" << dtheta << endl;
-					cout << "d:" << d << endl;
+					//cout << "dtheta" << dtheta << endl;
+					//cout << "d:" << d << endl;
 
 					//控制1
 					if (abs(dtheta) > 2 && st_flag == 1)
@@ -1093,11 +1157,11 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 						float phph = 30; //度数阈值，低于这个度数一一个恒定值控制
 						if (abs(dtheta) > phph)
 						{
-							theApp.robotServer.robotlist[index].move(0, -dtheta*pt );
+							theApp.robotServer.robotlist[index].move(0, -dtheta*pt);
 						}
 						else
 						{
-							theApp.robotServer.robotlist[index].move(0, -(dtheta / abs(dtheta)) * phph * pt );
+							theApp.robotServer.robotlist[index].move(0, -(dtheta / abs(dtheta)) * phph * pt);
 						}
 						ReleaseMutex(theApp.robotServer.hMutex);//解锁
 
@@ -1129,7 +1193,105 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 						ReleaseMutex(theApp.robotServer.hMutex);//解锁
 
 					}
-					else if (abs(dtheta) > 5 && st_flag == 2 && d>0.2)
+					else if (abs(dtheta) > 5 && st_flag == 2 && d > 0.2)
+					{
+						st_flag = 1;
+					}
+
+					cout << "dtheta" << dtheta << endl;
+					cout << "d:" << d << endl;
+					//判断距离结束任务
+					if (d < 0.05)
+					{
+						st_flag = 0;
+					}
+
+					Sleep(50);
+				}
+
+			}
+			else if (theApp.taskqueue[index][0].taskname == 2)
+			{
+				int st_flag = 1;//记录机器人在执行次任务过程中的状态，1为找方向原地转圈，2为直走加偏航 0为完成任务
+				float dtheta;
+				Point2f ds;
+				float d;
+
+				lpo.x = theApp.taskqueue[index][0].x; lpo.y = theApp.taskqueue[index][0].y;
+
+				while (st_flag)
+				{
+					//获取信息
+					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+					int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+					if (objindex < 0)
+					{
+						ReleaseMutex(theApp.robotServer.hMutex);//解锁
+						ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+						printf("error：Taskrun_ThreadFun：检测不到图片，停止任务");
+						break;
+					}
+					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
+					theta = atan2(-theApp.obj[objindex].direction3D[1], -theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
+					dtheta = theta - atan2(lpo.y - lp.y, lpo.x - lp.x) * 180 / 3.14159;
+					if (dtheta < -180) dtheta = 360 + dtheta;
+					else if (dtheta > 180) dtheta = dtheta - 360;
+					ds = lpo - lp;
+					d = sqrt(ds.x*ds.x + ds.y*ds.y);
+					ReleaseMutex(theApp.robotServer.hMutex);//解锁
+					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+					cout << "dtheta" << dtheta << endl;
+					cout << "d:" << d << endl;
+
+					//控制1
+					if (abs(dtheta) > 2 && st_flag == 1)
+					{
+
+						WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+
+						float pt = 0.006;//转动pid系数
+						float phph = 30; //度数阈值，低于这个度数一一个恒定值控制
+						if (abs(dtheta) > phph)
+						{
+							theApp.robotServer.robotlist[index].move(0, -dtheta*pt);
+						}
+						else
+						{
+							theApp.robotServer.robotlist[index].move(0, -(dtheta / abs(dtheta)) * phph * pt);
+						}
+						ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+					}
+					else if (abs(dtheta) < 2 && st_flag == 1)
+					{
+						st_flag = 2;
+					}
+
+
+					//控制2
+					if (d > 0.05 && st_flag == 2)
+					{
+
+						WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+
+						float pv = 0.2, ptt = 0.01; //pid系数
+						float phph2 = 0.3;//距离阈值，低于这个距离就采用恒定值控制
+						if (d > phph2)
+						{
+							theApp.robotServer.robotlist[index].move(-d*pv, -dtheta*ptt);
+							//theApp.robotServer.aimirobot.v = d*pv; theApp.robotServer.aimirobot.w = dtheta*ptt;
+						}
+						else
+						{
+							theApp.robotServer.robotlist[index].move(-phph2*pv, -dtheta*ptt);
+							//theApp.robotServer.aimirobot.v = phph2*pv; theApp.robotServer.aimirobot.w = dtheta*ptt;
+						}
+						ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+					}
+					else if (abs(dtheta) > 5 && st_flag == 2 && d > 0.2)
 					{
 						st_flag = 1;
 					}
@@ -1143,7 +1305,71 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 
 					Sleep(50);
 				}
+			}
+			else if (theApp.taskqueue[index][0].taskname == 3)//摆正姿态
+			{
+				int st_flag = 1;//记录机器人在执行次任务过程中的状态，1为找方向原地转圈，2为直走加偏航 0为完成任务
+				float dtheta;
 
+
+				while (st_flag)
+				{
+					//获取信息
+					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+					WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+					int objindex = theApp.visionLSys.findVecterElm(theApp.obj, theApp.robotServer.robotlist[index].robotID);
+					if (objindex < 0) 
+					{
+						ReleaseMutex(theApp.robotServer.hMutex);//解锁
+						ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+						printf("error：Taskrun_ThreadFun：检测不到图片，停止任务");
+						break; 
+					}
+					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
+					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
+					dtheta = theta - atan2(theApp.taskqueue[index][0].y, theApp.taskqueue[index][0].y) * 180 / 3.14159;
+					if (dtheta < -180) dtheta = 360 + dtheta;
+					else if (dtheta > 180) dtheta = dtheta - 360;
+
+					ReleaseMutex(theApp.robotServer.hMutex);//解锁
+					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+					if (dtheta < 0) dtheta = 360 + dtheta;
+
+					if (theApp.taskqueue[index][0].lf == 1) dtheta=dtheta-360;
+
+					cout << "dtheta" << dtheta << endl;
+
+					//控制1
+					if (abs(dtheta) > 5 && st_flag == 1)
+					{
+
+						WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+
+						float pt = 0.006;//转动pid系数
+						float phph = 30; //度数阈值，低于这个度数一一个恒定值控制
+						if (abs(dtheta) > phph)
+						{
+							theApp.robotServer.robotlist[index].move(0, -dtheta*pt);
+						}
+						else
+						{
+							theApp.robotServer.robotlist[index].move(0, -(dtheta / abs(dtheta)) * phph * pt);
+						}
+						ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+					}
+					else if (abs(dtheta) < 5 && st_flag == 1)
+					{
+						st_flag = 0;
+					}
+					Sleep(50);
+
+				}
+			}
+			else
+			{
+				Sleep(100);
 			}
 			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
 			theApp.robotServer.robotlist[index].move(0, 0);
@@ -1152,11 +1378,6 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 			std::vector<CMultiRobotApp::task>::iterator iter = theApp.taskqueue[index].begin();
 			theApp.taskqueue[index].erase(iter);
 		}
-		else
-		{
-			Sleep(100);
-		}
-
 	}
 
 	return 0;
@@ -1180,6 +1401,7 @@ void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 
 		//刷新指定机器人的信息：电压 IMU 
 		int index = m_RobotList.GetCurSel();
+		theApp.robotlist_checkIndex = index;
 		if (index >= 0)
 		{
 			//刷新电压
@@ -1566,6 +1788,7 @@ void CMultiRobotDlg::OnDestroy()
 	theApp.ThreadOn = 0;
 	ReleaseMutex(theApp.robotServer.hMutex);//解锁
 	ReleaseMutex(theApp.visionLSys.hMutex);//解锁 
+	Sleep(1000);
 	//等待几大线程结束
 	//WaitForMultipleObjects(1, &theApp.robotServer.hListenThread, true, INFINITE);
 	//WaitForMultipleObjects(1, &theApp.visionLSys.hThread, true, INFINITE);
@@ -1832,19 +2055,9 @@ void CMultiRobotDlg::OnTest_toPoint()
 	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
 	
 	CMultiRobotApp::task foo; 
-	
-	for (size_t i = 0; i < 10; i++)
-	{
-		foo.taskname = 1; foo.x = 0.75; foo.y = 0.75;
-		theApp.taskqueue[0].push_back(foo);
-		foo.taskname = 1; foo.x = 0.75; foo.y = -0.75;
-		theApp.taskqueue[0].push_back(foo);
-		foo.taskname = 1; foo.x = -0.75; foo.y = -0.75;
-		theApp.taskqueue[0].push_back(foo);
-		foo.taskname = 1; foo.x = -0.75; foo.y = 0.75;
-		theApp.taskqueue[0].push_back(foo);
-	}
-	
+	foo.taskname = 3; foo.x = 1; foo.y = 0; foo.lf = 1;
+	theApp.taskqueue[0].push_back(foo);
+
 
 	ReleaseMutex(theApp.robotServer.hMutex);//解锁
 
