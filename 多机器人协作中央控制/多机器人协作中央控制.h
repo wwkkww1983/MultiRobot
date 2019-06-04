@@ -75,6 +75,12 @@ public:
 	HANDLE hTaskrunThread[4];//任务执行线程线程句柄
 	DWORD TaskrunThreadID[4];//任务执行线程线程ID
 
+	//中央调度大任务
+	int bigtask=0;//0:没有任务 1：物体分拣任务 2：机器人编队任务
+	HANDLE MultiRobotControl_Mutex;//用于多线程 互斥锁,上变量进行加锁。
+	HANDLE hMultiRobotControlThread;//任务执行线程线程句柄
+	DWORD MultiRobotControlThreadID;//任务执行线程线程ID
+
 	DECLARE_MESSAGE_MAP()
 };
 

@@ -2,9 +2,9 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.7
+版  本：beta 0.8
 更  新：
-	 1、改进爱米家机器人的运动控制的参数解析
+	 1、对于小机器人的move函数，加入了参数限幅
 */
 
 
@@ -151,8 +151,14 @@ INT8 robot::move(float lin_val, float ang_val)
 {
 	float_to_char lin;
 	float_to_char ang;
+
+	float x_lin_val;//限制了move的最大值
 	
-	lin.fval = -lin_val;
+	if (lin_val >= 0.2) x_lin_val = 0.2;
+	else if (lin_val <= -0.2) x_lin_val = -0.2;
+	else x_lin_val = lin_val;
+
+	lin.fval = -x_lin_val;
 	ang.fval = ang_val;
 
 	char outbuf[SEND_LENGHT] = { 0xd8,0x02,0x00,0x02,0x04,0,0,0,0,0x04,0,0,0,0 ,0xc7};

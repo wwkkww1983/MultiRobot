@@ -135,6 +135,7 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_LBN_DBLCLK(IDC_LIST1, &CMultiRobotDlg::OnLbnDblclkList1)
 	ON_BN_CLICKED(IDC_CHECK3, &CMultiRobotDlg::OnBnClickedCheck3)
 	ON_COMMAND(ID_32782, &CMultiRobotDlg::OnTest_toPoint)
+	ON_COMMAND(ID_32784, &CMultiRobotDlg::OnsetTask)
 END_MESSAGE_MAP()
 
 
@@ -254,6 +255,10 @@ BOOL CMultiRobotDlg::OnInitDialog()
 		theApp.taskqueue.push_back(newtaskq);
 		theApp.hTaskrunThread[threadi]= CreateThread(NULL, 0, Taskrun_ThreadFun, (LPVOID)threadi, 0, &theApp.TaskrunThreadID[threadi]);
 	}
+
+	//开启中央调度线程
+	theApp.MultiRobotControl_Mutex = CreateMutex(NULL, FALSE, NULL);
+	theApp.hMultiRobotControlThread= CreateThread(NULL, 0, MultiRobotControl_ThreadFun, NULL,0,&theApp.MultiRobotControlThreadID);
 
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -378,9 +383,11 @@ DWORD WINAPI updataRobotStatusThreadFun(LPVOID p)
 		Sleep(1000);
 	}
 	
-	//删除该id的进程 从robotServer.robotlist中pop掉
+	//删除该id的进程 从robotServer.robotlist中pop掉,并且关闭socket
 	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
 	robotindex = theApp.robotServer.findID(robotid);
+	//关闭套接字。
+	closesocket(theApp.robotServer.robotlist[robotindex].robotsock);
 	vector<robot>::iterator it = theApp.robotServer.robotlist.begin() + robotindex;
 	theApp.robotServer.robotlist.erase(it);
 	//解锁
@@ -1097,6 +1104,7 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 	int index = (int)p;
 	Point2f lp; float theta;
 	Point2f lpo;
+	int zanting=0;
 
 	////测试用，要删掉
 	AllocConsole();
@@ -1132,7 +1140,12 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 						ReleaseMutex(theApp.robotServer.hMutex);//解锁
 						ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 						printf("error：Taskrun_ThreadFun：检测不到图片，停止任务");
+						zanting = 1;
 						break;
+					}
+					else
+					{
+						zanting = 0;
 					}
 					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
 					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
@@ -1230,7 +1243,12 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 						ReleaseMutex(theApp.robotServer.hMutex);//解锁
 						ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 						printf("error：Taskrun_ThreadFun：检测不到图片，停止任务");
+						zanting = 1;
 						break;
+					}
+					else
+					{
+						zanting = 0;
 					}
 					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
 					theta = atan2(-theApp.obj[objindex].direction3D[1], -theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
@@ -1323,20 +1341,30 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 						ReleaseMutex(theApp.robotServer.hMutex);//解锁
 						ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 						printf("error：Taskrun_ThreadFun：检测不到图片，停止任务");
+						zanting = 1;
 						break; 
+					}
+					else
+					{
+						zanting = 0;
 					}
 					lp.x = theApp.obj[objindex].coordinate3D[0]; lp.y = theApp.obj[objindex].coordinate3D[1];
 					theta = atan2(theApp.obj[objindex].direction3D[1], theApp.obj[objindex].direction3D[0]) * 180 / 3.14159;
-					dtheta = theta - atan2(theApp.taskqueue[index][0].y, theApp.taskqueue[index][0].y) * 180 / 3.14159;
+					dtheta = theta - atan2(theApp.taskqueue[index][0].y, theApp.taskqueue[index][0].x) * 180 / 3.14159;
 					if (dtheta < -180) dtheta = 360 + dtheta;
 					else if (dtheta > 180) dtheta = dtheta - 360;
+
+					if (theApp.taskqueue[index][0].lf != 0)
+					{
+						if (dtheta < 0) dtheta = 360 + dtheta;
+						if (theApp.taskqueue[index][0].lf == 1) dtheta = dtheta - 360;
+					}
 
 					ReleaseMutex(theApp.robotServer.hMutex);//解锁
 					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
-					if (dtheta < 0) dtheta = 360 + dtheta;
-
-					if (theApp.taskqueue[index][0].lf == 1) dtheta=dtheta-360;
+					
+					
 
 					cout << "dtheta" << dtheta << endl;
 
@@ -1374,12 +1402,131 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
 			theApp.robotServer.robotlist[index].move(0, 0);
 			ReleaseMutex(theApp.robotServer.hMutex);//解锁
-			//删除任务队列
-			std::vector<CMultiRobotApp::task>::iterator iter = theApp.taskqueue[index].begin();
-			theApp.taskqueue[index].erase(iter);
+			if (zanting == 0)
+			{
+				//删除任务队列
+				std::vector<CMultiRobotApp::task>::iterator iter = theApp.taskqueue[index].begin();
+				theApp.taskqueue[index].erase(iter);
+			}
 		}
 	}
 
+	return 0;
+}
+
+//多机协作中央调度程序
+DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
+{
+
+	while (theApp.ThreadOn)
+	{
+		WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+		int bigtask = theApp.bigtask;
+		ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+		if (bigtask==1)
+		{
+
+			WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+			theApp.bigtask = 0;
+			ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+			//写入机器人分拣搬运任务分配，
+			CMultiRobotApp::task ntask;
+			int robot81_index = theApp.robotServer.findID(81);
+			int robot82_index = theApp.robotServer.findID(82);
+
+			Point2f A = Point2f(0.578, 0.65);
+			Point2f B = Point2f(0.027, 0.7);
+			Point2f C = Point2f(-0.67, 0.66);
+			Point2f D = Point2f(-0.67, 1.3);
+			Point2f E = Point2f(1.9, 1.3);
+			Point2f P81 = Point2f(1.9, 0.65);
+			Point2f P82 = Point2f(1.9, 0.3);
+
+			ntask.taskname = 1; ntask.x = A.x; ntask.y = A.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot81_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 1; ntask.x = B.x; ntask.y = B.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot81_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			Sleep(20000);
+
+			ntask.taskname = 1; ntask.x = A.x; ntask.y = A.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot82_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			//
+			Sleep(25000);
+
+			ntask.taskname = 1; ntask.x = C.x; ntask.y = C.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot81_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 1; ntask.x = D.x; ntask.y = D.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot81_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 1; ntask.x = E.x; ntask.y = E.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot81_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 1; ntask.x = P82.x; ntask.y = P82.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot81_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 3; ntask.x = -1; ntask.y = 0; ntask.lf = 0;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot81_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			Sleep(4000);
+
+			ntask.taskname = 1; ntask.x = B.x; ntask.y = B.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot82_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			//
+			Sleep(25000);
+
+			ntask.taskname = 1; ntask.x = C.x; ntask.y = C.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot82_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 1; ntask.x = D.x; ntask.y = D.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot82_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 1; ntask.x = E.x; ntask.y = E.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot82_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 1; ntask.x = P81.x; ntask.y = P81.y;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot82_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			ntask.taskname = 3; ntask.x = -1; ntask.y = 0; ntask.lf = 0;
+			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+			theApp.taskqueue[robot82_index].push_back(ntask);
+			ReleaseMutex(theApp.robotServer.hMutex);//解锁
+
+			bigtask = 0;
+		}
+
+		Sleep(100);
+	}
 	return 0;
 }
 
@@ -2061,4 +2208,15 @@ void CMultiRobotDlg::OnTest_toPoint()
 
 	ReleaseMutex(theApp.robotServer.hMutex);//解锁
 
+}
+
+
+
+//开始分拣任务
+void CMultiRobotDlg::OnsetTask()
+{
+	// TODO: 在此添加命令处理程序代码
+	WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+	theApp.bigtask = 1;
+	ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
 }

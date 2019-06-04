@@ -117,6 +117,7 @@ public:
 	afx_msg void OnTest_toPoint();
 	// -1表示没连接
 	int m_aimibotID;
+	afx_msg void OnsetTask();
 };
 
 //核心！！！！！
@@ -145,4 +146,4 @@ DWORD WINAPI aimiTaskrun_ThreadFun(LPVOID p);
 DWORD WINAPI Taskrun_ThreadFun(LPVOID p);
 
 //多机协作中央调度程序
-//DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p);
+DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p);
