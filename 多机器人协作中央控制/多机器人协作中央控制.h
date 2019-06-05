@@ -37,7 +37,7 @@ public:
 	vector<Mat> IPCshowImg;//从摄像头上提取出来的经过处理的画面，会实时更新。
 	int seleteimshow = -2;//选择哪一个显示img，-1则是全显示,-2不显示
 	int ThreadOn = 1; //=0代表退出线程
-
+	
 	//config
 	FileStorage config;
 

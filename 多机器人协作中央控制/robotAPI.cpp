@@ -171,13 +171,16 @@ INT8 robot::move(float lin_val, float ang_val)
 
 	if (sendret <= 0)
 	{
-		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+		connectstatus_cout++;
+		if(connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
 		return -1;
 	}
 	else
 	{
 		v = lin_val;
 		w = ang_val;
+		connectstatus_cout = 0;
 		return 1;
 	}
 
@@ -198,8 +201,15 @@ void robot::setTorque(char sta)
 
 	if (sendret <= 0)
 	{
-		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
 		
+	}
+	else
+	{
+		connectstatus_cout = 0;
+
 	}
 
 }
@@ -255,7 +265,13 @@ imu_msg robot::getIMU()
 	int recvLen = recv(robotsock, recvbuf, sizeof(recvbuf), 0);
 	if (recvLen<=0)
 	{
-		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+	}
+	else
+	{
+		connectstatus_cout = 0;
 	}
 	
 	
@@ -285,16 +301,21 @@ float robot::getVoltage(void)
 	//检查网络质量
 	if (recvLen == 0)
 	{
-		connectStatus = ROBOT_connectStatus_CHECKERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_CHECKERROR;
 		return -2;
 	}
 	else if(recvLen==SOCKET_ERROR)
 	{
-		connectStatus = ROBOT_connectStatus_CHECKERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_CHECKERROR;
 		return -3;
 	}
 	else
 	{
+		connectstatus_cout = 0;
 		DWORD pingms = GetTickCount()- starttime;
 		if(pingms<1) connectStatus = ROBOT_connectStatus_3Level;
 		else if(pingms < 10) connectStatus = ROBOT_connectStatus_2Level;
@@ -331,13 +352,21 @@ float robot::getIllumination(void)
 	int recvLen = recv(robotsock, recvbuf, sizeof(recvbuf), 0);
 	if (recvLen == 0)
 	{
-		connectStatus = ROBOT_connectStatus_CHECKERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_CHECKERROR;
 		return -2;
 	}
 	else if (recvLen == SOCKET_ERROR)
 	{
-		connectStatus = ROBOT_connectStatus_CHECKERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_CHECKERROR;
 		return -3;
+	}
+	else
+	{
+		connectstatus_cout = 0;
 	}
 
 
@@ -374,11 +403,14 @@ uint8_t robot::setLED(uint8_t lednum, uint8_t onoff)
 	int sendret=send(robotsock, outbuf, sizeof(outbuf), 0);
 	if (sendret <= 0)
 	{
-		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
 		return -1;
 	}
 	else
 	{
+		connectstatus_cout = 0;
 		return 1;
 	}
 }
@@ -397,7 +429,13 @@ uint8_t robot::getTorque()
 	int recvLen = recv(robotsock, recvbuf, sizeof(recvbuf), 0);
 	if (recvLen <= 0)
 	{
-		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+	}
+	else
+	{
+		connectstatus_cout = 0;
 	}
 
 
@@ -422,7 +460,13 @@ void robot::initIMU(void)
 
 	if (sendret <= 0)
 	{
-		connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+		connectstatus_cout++;
+		if (connectstatus_cout>ROBOT_CONNECTloseNUM)
+			connectStatus = ROBOT_connectStatus_COMMUNICATEERROR;
+	}
+	else
+	{
+		connectstatus_cout = 0;
 	}
 
 }

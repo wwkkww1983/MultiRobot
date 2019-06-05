@@ -347,8 +347,8 @@ DWORD WINAPI ListenAcceptThreadFun(LPVOID p)
 		{
 			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);//锁挂
 			HANDLE h1; DWORD id1;
-			uint8_t therobotid = theApp.robotServer.robotlist.back().robotID;
-			h1 = CreateThread(NULL, 0, updataRobotStatusThreadFun, &therobotid, 0, &id1);
+			//uint8_t therobotid = theApp.robotServer.robotlist.back().robotID;
+			h1 = CreateThread(NULL, 0, updataRobotStatusThreadFun, &theApp.robotServer.robotlist.back().robotID, 0, &id1);
 			hUpdataRobotThread.push_back(h1);
 			UpdataRobotThreadID.push_back(id1);
 			//解锁
@@ -356,6 +356,9 @@ DWORD WINAPI ListenAcceptThreadFun(LPVOID p)
 		}
 
 	}
+
+	
+
 	return 0;
 
 
@@ -396,7 +399,7 @@ DWORD WINAPI updataRobotStatusThreadFun(LPVOID p)
 }
 
 /*--------------------IPC视觉处理定位线程-----------------------*/
-DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
+DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p) 
 {
 	vector<IPCobj> lastobj;
 

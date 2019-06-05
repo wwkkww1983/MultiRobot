@@ -25,6 +25,7 @@ robotAPI
 #define ServerIPport 6000
 #define SEND_LENGHT 128 //一个数据包的包长
 #define ROBOT_MAXCONNECT_NUM 5 //机器人最大连接个数
+#define ROBOT_CONNECTloseNUM 3 //允许错误的次数
 //-------------------------------------------------------
 //		定义：ROBOTServer::is_Open()的返回值的值域		-
 //-------------------------------------------------------
@@ -394,6 +395,9 @@ public:
 private:
 	//电池电量
 	int batteryVolt;
+	//计数，如果有超过10次返回-1，则把connectStatusz置为异常
+	int connectstatus_cout=0;
+
 	/*  func   */
 	rebotATmsg resolverMsg(char rbuf[SEND_LENGHT]);
 	uint8_t getID(void);
