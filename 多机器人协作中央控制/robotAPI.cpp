@@ -671,7 +671,7 @@ int AimiRobot::Connect()
 {
 	while(connect(robotsock, (struct sockaddr *)&socksin, sizeof(socksin)) == SOCKET_ERROR)
 	{
-		printf("connect error !");
+		//printf("connect error !");
 	}
 	connectStatus = ROBOT_connectStatus_2Level;
 	return 1;

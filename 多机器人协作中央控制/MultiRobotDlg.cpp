@@ -136,6 +136,7 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK3, &CMultiRobotDlg::OnBnClickedCheck3)
 	ON_COMMAND(ID_32782, &CMultiRobotDlg::OnTest_toPoint)
 	ON_COMMAND(ID_32784, &CMultiRobotDlg::OnsetTask)
+	ON_COMMAND(ID_32787, &CMultiRobotDlg::OnfinishGet_flag)
 END_MESSAGE_MAP()
 
 
@@ -351,6 +352,7 @@ DWORD WINAPI ListenAcceptThreadFun(LPVOID p)
 			h1 = CreateThread(NULL, 0, updataRobotStatusThreadFun, &theApp.robotServer.robotlist.back().robotID, 0, &id1);
 			hUpdataRobotThread.push_back(h1);
 			UpdataRobotThreadID.push_back(id1);
+			theApp.robotServer.robotlist.back().setTorque(1);
 			//解锁
 			ReleaseMutex(theApp.robotServer.hMutex);
 		}
@@ -1110,8 +1112,8 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 	int zanting=0;
 
 	////测试用，要删掉
-	AllocConsole();
-	freopen("CONOUT$", "w", stdout);
+	//AllocConsole();
+	//freopen("CONOUT$", "w", stdout);
 	while (theApp.ThreadOn)
 	{
 		WaitForSingleObject(theApp.hTaskMutex, INFINITE);//锁挂
@@ -1214,8 +1216,8 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 						st_flag = 1;
 					}
 
-					cout << "dtheta" << dtheta << endl;
-					cout << "d:" << d << endl;
+					//cout << "dtheta" << dtheta << endl;
+					//cout << "d:" << d << endl;
 					//判断距离结束任务
 					if (d < 0.05)
 					{
@@ -1263,8 +1265,8 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 					ReleaseMutex(theApp.robotServer.hMutex);//解锁
 					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 
-					cout << "dtheta" << dtheta << endl;
-					cout << "d:" << d << endl;
+					//cout << "dtheta" << dtheta << endl;
+					//cout << "d:" << d << endl;
 
 					//控制1
 					if (abs(dtheta) > 2 && st_flag == 1)
@@ -1369,7 +1371,7 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 					
 					
 
-					cout << "dtheta" << dtheta << endl;
+					//cout << "dtheta" << dtheta << endl;
 
 					//控制1
 					if (abs(dtheta) > 5 && st_flag == 1)
@@ -1462,8 +1464,19 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 			theApp.taskqueue[robot82_index].push_back(ntask);
 			ReleaseMutex(theApp.robotServer.hMutex);//解锁
 
-			//
-			Sleep(25000);
+			
+			//等待抓取信号
+			int f_flag = 0;
+			while (f_flag == 0)
+			{
+				WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+				f_flag = theApp.finishGet_flag;
+				ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+			}
+			WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+			theApp.finishGet_flag=0;
+			ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+			
 
 			ntask.taskname = 1; ntask.x = C.x; ntask.y = C.y;
 			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
@@ -1497,8 +1510,17 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 			theApp.taskqueue[robot82_index].push_back(ntask);
 			ReleaseMutex(theApp.robotServer.hMutex);//解锁
 
-			//
-			Sleep(25000);
+			//等待抓取信号
+			f_flag = 0;
+			while (f_flag == 0)
+			{
+				WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+				f_flag = theApp.finishGet_flag;
+				ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+			}
+			WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+			theApp.finishGet_flag = 0;
+			ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
 
 			ntask.taskname = 1; ntask.x = C.x; ntask.y = C.y;
 			WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
@@ -2222,4 +2244,15 @@ void CMultiRobotDlg::OnsetTask()
 	WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
 	theApp.bigtask = 1;
 	ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+}
+
+
+//完成抓取信号
+void CMultiRobotDlg::OnfinishGet_flag()
+{
+	// TODO: 在此添加命令处理程序代码
+	WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+	theApp.finishGet_flag = 1;
+	ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+
 }

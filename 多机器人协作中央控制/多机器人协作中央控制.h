@@ -81,6 +81,9 @@ public:
 	HANDLE hMultiRobotControlThread;//任务执行线程线程句柄
 	DWORD MultiRobotControlThreadID;//任务执行线程线程ID
 
+	//完成抓取信号
+	int finishGet_flag=0;
+
 	DECLARE_MESSAGE_MAP()
 };
 

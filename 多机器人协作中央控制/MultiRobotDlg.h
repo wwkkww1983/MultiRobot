@@ -118,6 +118,7 @@ public:
 	// -1表示没连接
 	int m_aimibotID;
 	afx_msg void OnsetTask();
+	afx_msg void OnfinishGet_flag();
 };
 
 //核心！！！！！
