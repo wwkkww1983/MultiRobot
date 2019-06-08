@@ -11,6 +11,9 @@
 #include "addipcDlg.h"
 
 
+
+
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -137,6 +140,7 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_COMMAND(ID_32782, &CMultiRobotDlg::OnTest_toPoint)
 	ON_COMMAND(ID_32784, &CMultiRobotDlg::OnsetTask)
 	ON_COMMAND(ID_32787, &CMultiRobotDlg::OnfinishGet_flag)
+	ON_EN_CHANGE(IDC_EDIT14, &CMultiRobotDlg::OnEnChangeEdit14)
 END_MESSAGE_MAP()
 
 
@@ -173,7 +177,10 @@ BOOL CMultiRobotDlg::OnInitDialog()
 
 
 	//***************************************** TODO: 在此添加额外的初始化代码
-	m_Menu.LoadMenu(IDR_MENU1);//初始化菜单
+	
+	
+	//初始化菜单
+	m_Menu.LoadMenu(IDR_MENU1);
 	SetMenu(&m_Menu);
 	//读取json 设置文件
 	theApp.config.open("config.json", cv::FileStorage::READ);
@@ -284,6 +291,28 @@ void CMultiRobotDlg::OnSysCommand(UINT nID, LPARAM lParam)
 
 void CMultiRobotDlg::OnPaint()
 {
+
+	//------绘制logo
+	//获取到DC
+	CDC* pDC = GetDC();
+	//你需要绘制的目标
+	CRect clientRect;
+	GetClientRect(&clientRect);
+	//载入你的图片
+	Gdiplus::Bitmap * lpBmp = Gdiplus::Bitmap::FromFile(_T("logo1.png"));;
+	//绑定你 的DC
+	Gdiplus::Graphics graph(pDC->m_hDC);
+	//开始绘制操作
+	graph.DrawImage(lpBmp,
+		//目标位置
+		Gdiplus::Rect(500, 280, lpBmp->GetWidth()/4, lpBmp->GetHeight()/4),
+		//图片的剪切
+		0, 0, lpBmp->GetWidth(), lpBmp->GetHeight(),
+		Gdiplus::UnitPixel
+	);
+	graph.ReleaseHDC(pDC->m_hDC);
+	delete lpBmp;
+
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // 用于绘制的设备上下文
@@ -300,6 +329,8 @@ void CMultiRobotDlg::OnPaint()
 
 		// 绘制图标
 		dc.DrawIcon(x, y, m_hIcon);
+
+		
 	}
 	else
 	{
@@ -2255,4 +2286,15 @@ void CMultiRobotDlg::OnfinishGet_flag()
 	theApp.finishGet_flag = 1;
 	ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
 
+}
+
+
+void CMultiRobotDlg::OnEnChangeEdit14()
+{
+	// TODO:  如果该控件是 RICHEDIT 控件，它将不
+	// 发送此通知，除非重写 CDialogEx::OnInitDialog()
+	// 函数并调用 CRichEditCtrl().SetEventMask()，
+	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
+
+	// TODO:  在此添加控件通知处理程序代码
 }

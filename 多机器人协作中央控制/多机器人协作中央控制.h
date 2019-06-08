@@ -50,6 +50,9 @@ public:
 	int robotlist_checkIndex;//存储目前选中了robot列表中的第几个机器人。
 
 
+
+//加载logo
+	ULONG_PTR m_gdiplusToken;
 //任务！
 	struct task
 	{
@@ -85,6 +88,7 @@ public:
 	int finishGet_flag=0;
 
 	DECLARE_MESSAGE_MAP()
+	virtual int ExitInstance();
 };
 
 extern CMultiRobotApp theApp;

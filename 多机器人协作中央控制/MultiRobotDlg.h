@@ -119,6 +119,7 @@ public:
 	int m_aimibotID;
 	afx_msg void OnsetTask();
 	afx_msg void OnfinishGet_flag();
+	afx_msg void OnEnChangeEdit14();
 };
 
 //ºËÐÄ£¡£¡£¡£¡£¡

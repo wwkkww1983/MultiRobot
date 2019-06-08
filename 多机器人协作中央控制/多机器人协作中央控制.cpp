@@ -77,6 +77,11 @@ BOOL CMultiRobotApp::InitInstance()
 	// 例如修改为公司或组织名
 	SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
 
+
+	//增加初始化zzq
+	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+	Gdiplus::GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
+
 	CMultiRobotDlg dlg;
 	m_pMainWnd = &dlg;
 	INT_PTR nResponse = dlg.DoModal();
@@ -111,3 +116,13 @@ BOOL CMultiRobotApp::InitInstance()
 	return FALSE;
 }
 
+
+
+
+
+int CMultiRobotApp::ExitInstance()
+{
+	// TODO: 在此添加专用代码和/或调用基类
+	Gdiplus::GdiplusShutdown(m_gdiplusToken);
+	return CWinApp::ExitInstance();
+}

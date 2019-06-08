@@ -1272,7 +1272,7 @@ void IPClocation::initMap(std::string mapname)
 {
 	map = imread(mapname);
 	arrowimg = imread("arrow.png", CV_LOAD_IMAGE_UNCHANGED);
-
+	 
 }
 int IPClocation::getMapSize()
 {
