@@ -4,6 +4,7 @@
   "movecompFlag": 0, //运动补偿 0关 1开
   "AimibotIP": "192.168.1.150",
   "AimibotIPport": 20000,    //
-  "estimation_Algorithm": 0 //如果是多相机融合定位，姿态估计算法用什么。0用AR姿态估计 1用运动学估计
+  "estimation_Algorithm": 0, //如果是多相机融合定位，姿态估计算法用什么。0用AR姿态估计 1用运动学估计
+  "trackData": 1 //1:开启轨迹数据记录、0关闭轨迹数据记录
 
 }

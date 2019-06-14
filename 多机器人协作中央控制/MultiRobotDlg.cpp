@@ -141,6 +141,7 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_COMMAND(ID_32784, &CMultiRobotDlg::OnsetTask)
 	ON_COMMAND(ID_32787, &CMultiRobotDlg::OnfinishGet_flag)
 	ON_EN_CHANGE(IDC_EDIT14, &CMultiRobotDlg::OnEnChangeEdit14)
+	ON_COMMAND(ID_32789, &CMultiRobotDlg::OnSaveData)
 END_MESSAGE_MAP()
 
 
@@ -184,6 +185,7 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	SetMenu(&m_Menu);
 	//读取json 设置文件
 	theApp.config.open("config.json", cv::FileStorage::READ);
+	theApp.config["trackData"] >> theApp.track_data_flag;
 	//zzq测试代码
 	int ipport;
 	theApp.config["IPport"]>> ipport;
@@ -242,6 +244,7 @@ BOOL CMultiRobotDlg::OnInitDialog()
 		IPCname.Format(_T("IPC:%d"), i);
 		m_IPClist.AddString(IPCname);
 	}
+	theApp.IPCshowImgMutex = CreateMutex(NULL, FALSE, NULL);
 	//
 	printd("初始化成功");
 	printd("开始运作");
@@ -465,6 +468,8 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 	int move_flag = 1;
 	float dir_now = 0;   // 0-2pi
 	float dir_st = 0;
+	//用于计时
+	DWORD starttime = GetTickCount();
 
 	while (theApp.ThreadOn)
 	{
@@ -473,9 +478,9 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		//查看每一个IPC的图片
 		for (size_t i = 0; i < theApp.IPCshowImg.size(); i++)
 		{
-			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+			WaitForSingleObject(theApp.IPCshowImgMutex, INFINITE);//锁挂
 			Mat img = theApp.IPCshowImg[i];
-			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+			ReleaseMutex(theApp.IPCshowImgMutex);//解锁
 			vector<IPCobj> objection;
 			if (theApp.visionLSys.Algorithm == 1)//判断用哪个算法
 			{
@@ -618,6 +623,16 @@ DWORD WINAPI IPCvisionLocationSystemThreadFun(LPVOID p)
 		//（3）刷新obj
 		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
 		theApp.obj = casheobj;
+		if (theApp.track_data_flag == true && casheobj.size()>=1)
+		{
+			Vec4f data; 
+			data[0] = casheobj[0].coordinate3D[0];
+			data[1] = casheobj[0].coordinate3D[1];
+			data[2] = casheobj[0].coordinate3D[2];
+			data[3] = (float)(GetTickCount() - starttime)/1000.0;
+			theApp.track_data.push_back(data);
+		}
+		
 		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
 		lastobj = casheobj;
 		
@@ -657,9 +672,9 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 				if (j < theApp.IPCshowImg.size())
 				{
 					//画一个世界坐标系
-					WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+					WaitForSingleObject(theApp.IPCshowImgMutex, INFINITE);//锁挂
 					Mat showimg= theApp.IPCshowImg[j].clone();
-					ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+					ReleaseMutex(theApp.IPCshowImgMutex);//解锁
 					
 					Vec3d rvecs, tvecs;
 					Rodrigues(theApp.visionLSys.IPC[j].RwMatrix, rvecs);
@@ -675,9 +690,9 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 		{
 			int j = theApp.seleteimshow;
 			//画一个世界坐标系
-			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+			WaitForSingleObject(theApp.IPCshowImgMutex, INFINITE);//锁挂
 			Mat showimg = theApp.IPCshowImg[j].clone();
-			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+			ReleaseMutex(theApp.IPCshowImgMutex);//解锁
 
 			Vec3d rvecs, tvecs;
 			Rodrigues(theApp.visionLSys.IPC[j].RwMatrix, rvecs);
@@ -962,13 +977,13 @@ DWORD WINAPI IPCvisionLocationSonThreadFun(LPVOID p)
 		//vector<IPCobj> objection;
 		//objection = theApp.visionLSys.location(img, 0, outimg);
 
-		WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+		WaitForSingleObject(theApp.IPCshowImgMutex, INFINITE);//锁挂
 		//刷新监视图
 		theApp.IPCshowImg[index] = img;
 		//刷新obj
 		//theApp.everyIPCobj[index] = objection;
 
-		ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+		ReleaseMutex(theApp.IPCshowImgMutex);//解锁
 
 
 		
@@ -1585,6 +1600,8 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 	}
 	return 0;
 }
+
+
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 								MFC函数
@@ -2238,31 +2255,24 @@ void CMultiRobotDlg::OnBnClickedCheck3()
 void CMultiRobotDlg::OnTest_toPoint()
 {
 	// TODO: 在此添加命令处理程序代码
-	//WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
-	////theApp.robotServer.aimirobot.v = 0.1;
-	//CMultiRobotApp::task foo; 
-	//for (size_t i = 0; i < 10; i++)
-	//{
-	//	foo.taskname = 1; foo.x = 0.75; foo.y = 0.75;
-	//	theApp.aimiTaskQueue.push_back(foo);
-	//	foo.taskname = 1; foo.x = 0.75; foo.y = -0.75;
-	//	theApp.aimiTaskQueue.push_back(foo);
-	//	foo.taskname = 1; foo.x = -0.75; foo.y = -0.75;
-	//	theApp.aimiTaskQueue.push_back(foo);
-	//	foo.taskname = 1; foo.x = -0.75; foo.y = 0.75;
-	//	theApp.aimiTaskQueue.push_back(foo);
-	//}
-	//ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
-
-
-	WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+	WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
 	
 	CMultiRobotApp::task foo; 
-	foo.taskname = 3; foo.x = 1; foo.y = 0; foo.lf = 1;
-	theApp.taskqueue[0].push_back(foo);
+	for (size_t i = 0; i < 10; i++)
+	{
+		foo.taskname = 1; foo.x = 0.3; foo.y = 0.2;
+		theApp.taskqueue[0].push_back(foo);
+		foo.taskname = 1; foo.x = 0.3; foo.y = 1.5;
+		theApp.taskqueue[0].push_back(foo);
+		foo.taskname = 1; foo.x = 1.7; foo.y = 1.5;
+		theApp.taskqueue[0].push_back(foo);
+		foo.taskname = 1; foo.x = 1.7; foo.y = 0.2;
+		theApp.taskqueue[0].push_back(foo);
+	}
+	ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
 
 
-	ReleaseMutex(theApp.robotServer.hMutex);//解锁
+	
 
 }
 
@@ -2297,4 +2307,17 @@ void CMultiRobotDlg::OnEnChangeEdit14()
 	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
 
 	// TODO:  在此添加控件通知处理程序代码
+}
+
+
+void CMultiRobotDlg::OnSaveData()
+{
+	// TODO: 在此添加命令处理程序代码
+	FileStorage xml("trackdata.xml", cv::FileStorage::WRITE);
+
+	WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+	xml << "trackdata" << theApp.track_data;
+	ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+
+	xml.release();
 }

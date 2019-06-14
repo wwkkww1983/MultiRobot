@@ -34,6 +34,7 @@ public:
 	vector<vector<IPCobj>> everyIPCobj;
 
 	//另外的一些传输信息
+	HANDLE IPCshowImgMutex;//专门为IPCshowImg定制的互斥锁。
 	vector<Mat> IPCshowImg;//从摄像头上提取出来的经过处理的画面，会实时更新。
 	int seleteimshow = -2;//选择哪一个显示img，-1则是全显示,-2不显示
 	int ThreadOn = 1; //=0代表退出线程
@@ -86,6 +87,10 @@ public:
 
 	//完成抓取信号
 	int finishGet_flag=0;
+
+	//定位轨迹记录:空间坐标加时间坐标（x,y,z,t）
+	vector<Vec4f> track_data;
+	bool track_data_flag;
 
 	DECLARE_MESSAGE_MAP()
 	virtual int ExitInstance();

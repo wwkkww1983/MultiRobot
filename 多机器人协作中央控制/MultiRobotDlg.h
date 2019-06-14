@@ -120,6 +120,7 @@ public:
 	afx_msg void OnsetTask();
 	afx_msg void OnfinishGet_flag();
 	afx_msg void OnEnChangeEdit14();
+	afx_msg void OnSaveData();
 };
 
 //核心！！！！！
@@ -149,3 +150,4 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p);
 
 //多机协作中央调度程序
 DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p);
+

@@ -167,7 +167,7 @@ private:
 
 	Mat map;//用于存储大地图
 	Mat arrowimg;//箭头图标
-	Size proimgsize = Size(1920, 1080);//定义本定位库中所有的图片规定大小。
+	Size proimgsize = Size(1280, 720);//定义本定位库中所有的图片规定大小。
 
 	
 

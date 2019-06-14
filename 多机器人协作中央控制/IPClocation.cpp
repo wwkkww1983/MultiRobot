@@ -1272,6 +1272,65 @@ void IPClocation::initMap(std::string mapname)
 {
 	map = imread(mapname);
 	arrowimg = imread("arrow.png", CV_LOAD_IMAGE_UNCHANGED);
+
+	vector<vector<Point>> fanP;
+	//对每一个IPC进行计算
+	for (size_t ipci = 0; ipci < getIPCNum(); ipci++)
+	{
+		//计算k向量
+		vector<Eigen::Vector3d> K;
+		Eigen::Matrix3d RI;
+		cv2eigen(IPC[ipci].RwMatrixI, RI);
+		Eigen::Matrix3d MI;
+		cv2eigen(IPC[ipci].cameraMatrixI, MI);
+		Eigen::Vector3d Pc;
+		Pc << 0, 0, 1;
+		K.push_back(RI*MI*Pc);
+		Pc << 1920, 0, 1;
+		K.push_back(RI*MI*Pc);
+		Pc << 1920, 1080, 1;
+		K.push_back(RI*MI*Pc);
+		Pc << 0, 1080, 1;
+		K.push_back(RI*MI*Pc);
+
+		//计算b向量
+		Eigen::Vector3d B;
+		Eigen::Vector3d T;
+		cv2eigen(IPC[ipci].TwVec, T);
+		B = RI*T;
+
+		vector<Point> piciP;
+		for (size_t i = 0; i < 4; i++)
+		{
+			Eigen::Matrix3d H;
+			H << -1, 0, K[i][0],
+				0, -1, K[i][1],
+				0, 0, K[i][2];
+			Eigen::Vector3d	Po=H.inverse()*B;
+			piciP.push_back(Point(Po[0]*m2pix+map.rows/2,-Po[1]* m2pix+map.cols/2));
+		}
+		fanP.push_back(piciP);	
+	}
+	//画画
+	for (size_t i = 0; i < getIPCNum(); i++)
+	{
+		Mat dst;
+		map.copyTo(dst);
+		cv::Point pt[1][4];
+		pt[0][0] = fanP[i][0];
+		pt[0][1] = fanP[i][1];
+		pt[0][2] = fanP[i][2];
+		pt[0][3] = fanP[i][3];
+
+		const cv::Point* ppt[1] = { pt[0] };
+		int npt[1] = { 4 };
+		cv::fillPoly(map, ppt, npt, 1, cv::Scalar(0, 255, 0));
+		cv::addWeighted(dst, 0.95, map, 0.05, 0, map);
+	}
+		
+		
+	
+	
 	 
 }
 int IPClocation::getMapSize()
