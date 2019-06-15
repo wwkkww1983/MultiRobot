@@ -2321,3 +2321,4 @@ void CMultiRobotDlg::OnSaveData()
 
 	xml.release();
 }
+
