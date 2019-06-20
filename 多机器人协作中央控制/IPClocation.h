@@ -39,7 +39,10 @@ public:
 	enum objclass
 	{
 		Robot = 1,     //机器人
-		object = 2	 //需要抓取的目标
+		object = 2,	 //需要抓取的目标
+		redobj=3,
+		buleobj=4,
+		greenobj=5
 	};
 
 	//参数

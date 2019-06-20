@@ -142,12 +142,18 @@ void map_mouse_callback(int event, int x, int y, int flags, void* param); //显示
 //单独为aimi机器人开辟线程
 DWORD WINAPI aimipuls_ThreadFun(LPVOID p);
 
-//爱米家机器人的任务线程
+//爱米家机器人的任务执行线程
 DWORD WINAPI aimiTaskrun_ThreadFun(LPVOID p);
 
-//小机器人的任务线程
+//小机器人的任务执行线程
 DWORD WINAPI Taskrun_ThreadFun(LPVOID p);
+
+//机械臂任务执行线程
+DWORD WINAPI uArmTaskrun_ThreadFun(LPVOID p);
 
 //多机协作中央调度程序
 DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p);
+
+//机械臂线程
+DWORD WINAPI uArmListenAcceptThreadFun(LPVOID p);
 

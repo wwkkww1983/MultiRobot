@@ -2,9 +2,9 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.8
+版  本：beta 0.9
 更  新：
-	 1、对于小机器人的move函数，加入了参数限幅
+	 1、添加了对uArm机械臂的支持
 */
 
 
@@ -846,3 +846,248 @@ INT8 AimiRobot::updateInfo()
 
 	return 1;
 }
+
+/*******************************************************************************
+* 定义通讯套接字类:机械臂服务器
+*******************************************************************************/
+void uArmSocket::init(int port)
+{
+	//初始化Socket
+	WORD socket_version = MAKEWORD(2, 2);
+	WSADATA wsadata;
+	if (WSAStartup(socket_version, &wsadata) != 0)
+	{
+		sock_Status = uArmSocket_WSAERROR;
+		return;
+	}
+
+
+	ServerSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	//创建socket 并判断是否创建成功
+	if (ServerSock == INVALID_SOCKET)
+	{
+		sock_Status = uArmSocket_INVALID_SOCKET;
+		return;
+	}
+
+
+	//设置服务器Socket地址
+	struct sockaddr_in s_sin; //用于存储本地创建socket的基本信息
+	s_sin.sin_family = AF_INET;  //定义协议族为IPV4
+	s_sin.sin_port = htons(port);//规定端口号
+	s_sin.sin_addr.S_un.S_addr = INADDR_ANY;
+
+	//绑定Socket Server到本地地址
+	if (bind(ServerSock, (LPSOCKADDR)&s_sin, sizeof(s_sin)) == SOCKET_ERROR)//绑定
+	{
+		sock_Status = uArmSocket_BINDERROR;
+		return;
+	}
+	//创建bind成功
+	sock_Status = uArmSocket_BIND_SUCCESS;
+
+	//设置超时
+	int nNetTimeout = 2000;
+	if (SOCKET_ERROR == setsockopt(ServerSock, SOL_SOCKET, SO_RCVTIMEO, (char *)&nNetTimeout, sizeof(int)))
+	{
+		printf("Set Ser_RecTIMEO error !\r\n");
+	}
+
+	return;
+}
+
+uArmServerStatus_ret uArmSocket::is_Open()
+{
+	return sock_Status;
+}
+int uArmSocket::Listen(int maxacp)
+{
+	return listen(ServerSock, maxacp);
+}
+
+//阻塞式接收机器人的连接
+int uArmSocket::Accept()
+{
+	SOCKET socket_of_client;  //客户端（远程）的socket
+	struct sockaddr_in c_sin; //用于存储已连接的客户端的socket基本信息
+	int    c_sin_len;         //函数accept的第三个参数，c_sin的大小。
+
+	c_sin_len = sizeof(c_sin);
+
+	uArmSock = accept(ServerSock, (SOCKADDR *)&c_sin, &c_sin_len);
+
+	//接收新用户
+	if (uArmSock == INVALID_SOCKET)
+	{
+		return -1;//Accept error
+	}
+	else
+	{
+		int timeout = 500; //3s
+		setsockopt(uArmSock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+		setsockopt(uArmSock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+		uArmSock_status = 1;
+
+
+	}
+}
+
+
+bool uArmSocket::GetLocalAddress(std::string& strAddress)
+{
+	char strHost[30] = { 0 };
+
+	// get host name, if fail, SetLastError is called  
+	if (SOCKET_ERROR != gethostname(strHost, sizeof(strHost)))
+	{
+		struct hostent* hp;
+		hp = gethostbyname(strHost);
+		int i = 0;
+		// IPv4: Address is four bytes (32-bit)  
+		if (hp->h_length < 4)
+			return false;
+
+		while (hp != NULL&&hp->h_addr_list[i] != NULL)
+		{
+			//如果网段小于10（就是路由器的局域网一般的范围）
+
+			if ((UINT)(((PBYTE)hp->h_addr_list[i])[2])<10)
+			{
+				// Convert address to . format  
+				strHost[0] = 0;
+
+				// IPv4: Create Address string  
+				sprintf(strHost, "%u.%u.%u.%u",
+					(UINT)(((PBYTE)hp->h_addr_list[i])[0]),
+					(UINT)(((PBYTE)hp->h_addr_list[i])[1]),
+					(UINT)(((PBYTE)hp->h_addr_list[i])[2]),
+					(UINT)(((PBYTE)hp->h_addr_list[i])[3]));
+
+				strAddress = strHost;
+				return true;
+			}
+			i++;
+		}
+		return false;
+
+	}
+	else
+		SetLastError(ERROR_INVALID_PARAMETER);
+	return false;
+}
+
+
+INT8 uArmSocket::uArmControl(int x, int y, int z, int f)
+{
+	std::string strx = std::to_string(x);
+	std::string stry = std::to_string(y);
+	std::string strz = std::to_string(z);
+	std::string strf = std::to_string(f);
+
+	std::string gcode = "G0 X" + strx + " Y" + stry + " Z" + strz + " F" + strf + "\n";
+	const char * pgcode = gcode.c_str();
+
+	int sendret = send(uArmSock, pgcode, strlen(pgcode), 0);
+
+	if (sendret <= 0)
+	{
+		uArmSock_status = -1;
+		return -1;
+	}
+	else
+	{
+		uArmSock_status = 1;
+		return 1;
+	}
+
+	return 0;
+}
+
+INT8 uArmSocket::uArmControlsu()
+{
+	std::string strx = std::to_string(su_x);
+	std::string stry = std::to_string(su_y);
+	std::string strz = std::to_string(su_z);
+	std::string strf = std::to_string(su_f);
+
+	std::string gcode = "G2204 X" + strx + " Y" + stry + " Z" + strz + " F" + strf + "\n";
+	const char * pgcode = gcode.c_str();
+
+	int sendret = send(uArmSock, pgcode, strlen(pgcode), 0);
+
+	if (sendret <= 0)
+	{
+		uArmSock_status = -1;
+		return -1;
+	}
+	else
+	{
+		uArmSock_status = 1;
+		return 1;
+	}
+
+	return 0;
+}
+
+INT8 uArmSocket::uArmControlsu(int x, int y, int z, int f)
+{
+	std::string strx = std::to_string(x);
+	std::string stry = std::to_string(y);
+	std::string strz = std::to_string(z);
+	std::string strf = std::to_string(f);
+
+	std::string gcode = "G2204 X" + strx + " Y" + stry + " Z" + strz + " F" + strf + "\n";
+	const char * pgcode = gcode.c_str();
+
+	int sendret = send(uArmSock, pgcode, strlen(pgcode), 0);
+
+	if (sendret <= 0)
+	{
+		uArmSock_status = -1;
+		return -1;
+	}
+	else
+	{
+		uArmSock_status = 1;
+		return 1;
+	}
+
+	return 0;
+}
+
+INT8 uArmSocket::uArmqi(bool open)
+{
+	std::string strv;
+
+
+	std::string gcode;
+	if (open == true)
+	{
+		gcode = "M2231 V1\n";
+	}
+	else
+	{
+		gcode = "M2231 V0\n";
+	}
+
+	const char * pgcode = gcode.c_str();
+
+	int sendret = send(uArmSock, pgcode, strlen(pgcode), 0);
+
+	if (sendret <= 0)
+	{
+		uArmSock_status = -1;
+		return -1;
+	}
+	else
+	{
+		uArmSock_status = 1;
+		return 1;
+	}
+
+	return 0;
+
+}
+
+

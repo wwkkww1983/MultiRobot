@@ -126,3 +126,53 @@ int CMultiRobotApp::ExitInstance()
 	Gdiplus::GdiplusShutdown(m_gdiplusToken);
 	return CWinApp::ExitInstance();
 }
+
+void CMultiRobotApp::taskqueue_push(int index, int taskn, Point2f toP, int lf)
+{
+	CMultiRobotApp::task ntask;
+
+	if (taskn == 1)
+	{
+		ntask.taskname = taskn; ntask.x = toP.x; ntask.y = toP.y;
+		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+		theApp.taskqueue[index].push_back(ntask);
+		ReleaseMutex(theApp.robotServer.hMutex);//解锁
+	}
+	else if(taskn==3)
+	{
+		ntask.taskname = taskn; ntask.x = toP.x; ntask.y = toP.y; ntask.lf = lf;
+		WaitForSingleObject(theApp.robotServer.hMutex, INFINITE);
+		theApp.taskqueue[index].push_back(ntask);
+		ReleaseMutex(theApp.robotServer.hMutex);//解锁
+	}
+	
+}
+
+void CMultiRobotApp::uArmTaskQueue_push(int taskn, Vec3f p1, Vec3f p2)
+{
+	CMultiRobotApp::task foo;
+	float dx = 293, dy = 386, dz = 18;
+
+	WaitForSingleObject(theApp.huArmTaskMutex, INFINITE);
+
+	foo.taskname = taskn;
+	foo.x = (p1[0] * 1000 + dx);
+	foo.y = (p1[1] * 1000 + dy);
+	foo.z = (p1[2] * 1000 + dz);
+	foo.x1 = p2[0] * 1000 + dx;
+	foo.y1 = p2[1] * 1000 + dy;
+	foo.z1 = p2[2] * 1000 + dz;
+
+	if (taskn == 4)
+	{
+		//调整限幅
+		float dd = sqrt(foo.x*foo.x + foo.y*foo.y);
+		float dd1 = sqrt(foo.x1*foo.x1 + foo.y1*foo.y1);
+		if (dd > 350 || dd1 > 350)
+			return;
+	}
+	theApp.uArmTaskQueue.push_back(foo);
+
+
+	ReleaseMutex(theApp.huArmTaskMutex);//解锁
+}

@@ -271,6 +271,18 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	theApp.MultiRobotControl_Mutex = CreateMutex(NULL, FALSE, NULL);
 	theApp.hMultiRobotControlThread= CreateThread(NULL, 0, MultiRobotControl_ThreadFun, NULL,0,&theApp.MultiRobotControlThreadID);
 
+	//初始化机械臂
+	theApp.uArm.init(21000);
+	printd("开始监听");
+	//创建监听线程
+	theApp.uArm.hMutex = CreateMutex(NULL, FALSE, NULL);
+	theApp.uArm.hListenThread = CreateThread(NULL, 0, uArmListenAcceptThreadFun, NULL, 0, &theApp.uArm.ListenThreadID);
+
+	//开启机械臂任务执行线程
+	theApp.huArmTaskMutex = CreateMutex(NULL, FALSE, NULL);
+	theApp.huArmTaskrunThread = CreateThread(NULL, 0, uArmTaskrun_ThreadFun, NULL, 0, &theApp.uArmTaskrunThreadID);
+
+
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -1465,9 +1477,84 @@ DWORD WINAPI Taskrun_ThreadFun(LPVOID p)
 	return 0;
 }
 
+DWORD WINAPI uArmTaskrun_ThreadFun(LPVOID p)
+{
+	int index = 1;
+
+	while (theApp.ThreadOn)
+	{
+		WaitForSingleObject(theApp.huArmTaskMutex, INFINITE);//锁挂
+		WaitForSingleObject(theApp.uArm.hMutex, INFINITE);
+		bool task_stat = theApp.uArm.uArmSock_status > 0 && theApp.uArmTaskQueue.size() > 0;
+		ReleaseMutex(theApp.uArm.hMutex);//解锁
+		ReleaseMutex(theApp.huArmTaskMutex);//解锁
+		if (task_stat)
+		{
+			//读取任务队列并解析
+			if (theApp.uArmTaskQueue[0].taskname == 4)//机械臂抓取某一个点的物体到某点去
+			{
+				//输入机械臂抓取任务
+				//获取信息
+				WaitForSingleObject(theApp.huArmTaskMutex, INFINITE);//锁挂
+				float lp[3], lpo[3];
+				lp[0] = theApp.uArmTaskQueue[0].x;
+				lp[1] = theApp.uArmTaskQueue[0].y; 
+				lp[2] = theApp.uArmTaskQueue[0].z;
+				lpo[0] = theApp.uArmTaskQueue[0].x1;
+				lpo[1] = theApp.uArmTaskQueue[0].y1;
+				lpo[2] = theApp.uArmTaskQueue[0].z1;
+				ReleaseMutex(theApp.huArmTaskMutex);//解锁
+
+				//机械臂运动
+				theApp.uArm.uArmControl(lp[0], lp[1], 100, 40);
+				Sleep(2500);
+				theApp.uArm.uArmControl(lp[0], lp[1], lp[2], 40);
+				Sleep(1000);
+				theApp.uArm.uArmqi(1);
+				Sleep(1000);
+				theApp.uArm.uArmControl(150, 0, 130, 40);
+				Sleep(2500);
+				theApp.uArm.uArmControl(lpo[0], lpo[1], 130, 40);
+				Sleep(3000);
+
+			}
+			else if(theApp.uArmTaskQueue[0].taskname == 5)//放下物体
+			{
+				
+				theApp.uArm.uArmqi(0);
+				Sleep(800);
+				theApp.uArm.uArmControl(150, 0, 50, 50);
+				Sleep(2000);
+			}
+			WaitForSingleObject(theApp.huArmTaskMutex, INFINITE);//锁挂
+			//删除任务队列
+			std::vector<CMultiRobotApp::task>::iterator iter = theApp.uArmTaskQueue.begin();
+			theApp.uArmTaskQueue.erase(iter);
+			ReleaseMutex(theApp.huArmTaskMutex);//解锁
+		}
+		else
+		{
+			Sleep(100);
+		}
+
+	}
+	return 0;
+
+}
+
+
+
 //多机协作中央调度程序
 DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 {
+	enum taskName
+	{
+		go_to = 1,
+		back_to = 2,
+		duizhun = 3,
+		uarmcap = 4,
+		uarmdown = 5
+	};
 
 	while (theApp.ThreadOn)
 	{
@@ -1476,7 +1563,7 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 		ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
 		if (bigtask==1)
 		{
-
+			/*
 			WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
 			theApp.bigtask = 0;
 			ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
@@ -1594,6 +1681,75 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 			ReleaseMutex(theApp.robotServer.hMutex);//解锁
 
 			bigtask = 0;
+			*/
+			
+			WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+			theApp.bigtask = 0;
+			ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+			//关键点
+			Point2f B = Point2f(-0.541, -0.65);
+			Point2f C = Point2f(0.045, -0.65);
+			Point2f D = Point2f(0.47, -0.608);
+			Point2f E = Point2f(-0.072, -1.199);
+			Point2f F = Point2f(-1.46, -1.10);
+			Point2f A[3] = { Point2f(-1.46, 0) ,Point2f(-1.46, -0.31) ,Point2f(-1.46, -0.623) };
+			//Point2f G[3] = { Point2f(-1.46, -0.623) ,Point2f(-1.46, 0.123) ,Point2f(-1.46, 0.223) };
+
+			//物体识别
+			vector<IPCobj> rgbobj;
+			IPCobj newobj;
+			newobj.cls = IPCobj::objclass::redobj;
+			newobj.coordinate3D[0] = -0.1; newobj.coordinate3D[1] = -0.2; newobj.coordinate3D[2] = 0.007;
+			newobj.ID = 81;
+			rgbobj.push_back(newobj);
+			newobj.cls = IPCobj::objclass::buleobj;
+			newobj.coordinate3D[0] = -0.1; newobj.coordinate3D[1] = -0.4; newobj.coordinate3D[2] = 0.015;
+			newobj.ID = 82;
+			rgbobj.push_back(newobj);
+			newobj.cls = IPCobj::objclass::greenobj;
+			newobj.coordinate3D[0] = -0.2; newobj.coordinate3D[1] = -0.2; newobj.coordinate3D[2] = 0.02;
+			newobj.ID = 83;
+			rgbobj.push_back(newobj);
+			//检查物体是否在可抓取范围内
+
+			//对应不同的机器人
+			UINT8* robot_index = new UINT8[rgbobj.size()];
+			for (size_t i = 0; i < rgbobj.size(); i++)
+			{
+				robot_index[i]=theApp.robotServer.findID(rgbobj[i].ID);
+			}
+
+			//开始任务
+			theApp.taskqueue_push(robot_index[0], taskName::go_to, B);
+			//theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[0].coordinate3D, Vec3f(-0.25, -0.65, 0.02));
+			for (size_t i = 0; i < rgbobj.size(); i++)
+			{
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, C);
+				while (theApp.taskqueue[robot_index[i]].size() != 0) Sleep(10);
+
+				if (i+1<rgbobj.size())
+				{
+					theApp.taskqueue_push(robot_index[i+1], taskName::go_to, B);
+				}
+				theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.65, 0.02));
+				theApp.uArmTaskQueue_push(taskName::uarmdown, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.65, 0.02));//机械臂放下
+				while (theApp.uArmTaskQueue.size() != 0) Sleep(10);
+				
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, D);
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, E);
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, F);
+				//theApp.taskqueue_push(robot_index[i], taskName::go_to, G[i]);
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, A[i]);
+				theApp.taskqueue_push(robot_index[i], taskName::duizhun, Point2f(1,0), 0);
+				
+
+				while (theApp.taskqueue[robot_index[i]].size() > 3) Sleep(10);
+				
+			}
+
+			
+
+			bigtask = 0;
 		}
 
 		Sleep(100);
@@ -1601,7 +1757,35 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 	return 0;
 }
 
+//机械臂线程
+DWORD WINAPI uArmListenAcceptThreadFun(LPVOID p)
+{
+	//监听
+	if (theApp.uArm.Listen(1) == SOCKET_ERROR)//监听
+	{
+		AfxMessageBox(_T("服务监听错误"));
+		return -1;
+	}
 
+	while (theApp.ThreadOn)
+	{
+		int acptret = theApp.uArm.Accept();
+
+		//接收新用户
+		if (acptret == INVALID_SOCKET)
+		{
+			//printf("accept error\n");
+			continue; //继续等待下一次连接
+		}
+		else
+		{
+			theApp.uArm.uArmControl(150, 0, 50, 30);
+		}
+		Sleep(1000);
+
+	}
+	return 0;
+}
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 								MFC函数
@@ -2255,21 +2439,39 @@ void CMultiRobotDlg::OnBnClickedCheck3()
 void CMultiRobotDlg::OnTest_toPoint()
 {
 	// TODO: 在此添加命令处理程序代码
-	WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
-	
-	CMultiRobotApp::task foo; 
-	for (size_t i = 0; i < 10; i++)
+	//WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
+	//
+	//CMultiRobotApp::task foo; 
+	//for (size_t i = 0; i < 10; i++)
+	//{
+	//	foo.taskname = 1; foo.x = 0.3; foo.y = 0.2;
+	//	theApp.taskqueue[0].push_back(foo);
+	//	foo.taskname = 1; foo.x = 0.3; foo.y = 1.5;
+	//	theApp.taskqueue[0].push_back(foo);
+	//	foo.taskname = 1; foo.x = 1.7; foo.y = 1.5;
+	//	theApp.taskqueue[0].push_back(foo);
+	//	foo.taskname = 1; foo.x = 1.7; foo.y = 0.2;
+	//	theApp.taskqueue[0].push_back(foo);
+	//}
+	//ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+
+	enum taskName
 	{
-		foo.taskname = 1; foo.x = 0.3; foo.y = 0.2;
-		theApp.taskqueue[0].push_back(foo);
-		foo.taskname = 1; foo.x = 0.3; foo.y = 1.5;
-		theApp.taskqueue[0].push_back(foo);
-		foo.taskname = 1; foo.x = 1.7; foo.y = 1.5;
-		theApp.taskqueue[0].push_back(foo);
-		foo.taskname = 1; foo.x = 1.7; foo.y = 0.2;
-		theApp.taskqueue[0].push_back(foo);
-	}
-	ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
+		go_to = 1,
+		back_to = 2,
+		duizhun = 3,
+		uarmcap = 4,
+		uarmdown = 5
+	};
+	
+
+	theApp.uArmTaskQueue_push(taskName::uarmcap, Vec3f(0, -0.3, 0.02), Vec3f(-0.2, -0.60, 0.02));
+	theApp.uArmTaskQueue_push(taskName::uarmdown, Vec3f(0, -0.3, 0.02), Vec3f(-0.2, -0.60, 0.02));
+	//theApp.taskqueue_push(0, taskName::go_to, Point2f(-1, 0), 1);
+	//theApp.taskqueue_push(0, taskName::go_to, Point2f(-1, -1), 1);
+	//theApp.taskqueue_push(0, taskName::go_to, Point2f(0, -1), 1);
+
+
 
 
 	

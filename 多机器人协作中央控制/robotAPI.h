@@ -2,9 +2,9 @@
 robotAPI
 说  明：实现了基本通讯功能，操作机器人
 制作人：邹智强
-版  本：beta 0.8
+版  本：beta 0.9
 更  新：
-1、对于小机器人的move函数，加入了参数限幅
+1、添加了对uArm机械臂的支持
 */
 
 
@@ -524,6 +524,63 @@ public:
 };
 
 
+
+//-------------------------------------------------------
+//		定义：uArmSocket::is_Open()的返回值的值域		-
+//-------------------------------------------------------
+enum uArmServerStatus_ret
+{
+	uArmSocket_BIND_SUCCESS = 1, //刚刚初始化bind成功
+
+	uArmSocket_WSAERROR = -3, //初始化sock库版本号错误
+	uArmSocket_INVALID_SOCKET = -2, //创建套接字失败
+	uArmSocket_BINDERROR = -4, //bind失败
+};
+
+
+/*******************************************************************************
+* 定义通讯套接字类:机械臂服务器
+*******************************************************************************/
+class uArmSocket
+{
+public:
+	void init(int port);
+	//查看ROBOTServer是否初始化成功，
+	uArmServerStatus_ret is_Open();
+	//监听
+	int Listen(int maxacp);
+	//接收
+	int Accept();
+	//获取本机IP地址
+	bool GetLocalAddress(std::string& strAddress);
+	//机械臂控制
+	INT8 uArmControl(int x, int y, int z, int f);
+	INT8 uArmControlsu();
+	INT8 uArmControlsu(int x, int y, int z, int f);
+	INT8 uArmqi(bool open);
+
+private:
+	uArmServerStatus_ret sock_Status; //存储本类是否创建成功
+
+public:
+	SOCKET ServerSock; //服务器的套接字，核心变量
+	SOCKET uArmSock; //服务器的套接字，核心变量
+
+	int uArmSock_status;
+
+
+	//用于多线程 监听线程
+	HANDLE hListenThread;
+	DWORD ListenThreadID;
+	//用于多线程 互斥锁
+	HANDLE hMutex;
+
+	//速度状态
+	int su_x = 0, su_y = 0, su_z = 0;
+	int su_f = 0;
+
+
+};
 
 
 
