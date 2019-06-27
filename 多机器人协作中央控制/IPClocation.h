@@ -4,9 +4,9 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 1.0
+版  本：beta 1.1
 更  改：
-1、添加大机器人定位支持
+	1、添加颜色识别功能，识别颜色并且定位出物体的位置。
 */
 
 #pragma once
@@ -308,5 +308,13 @@ public://输出函数接口
 	*@brief：找元素
 	*/
 	int findVecterElm(std::vector<IPCobj> vec, uint8_t robotidid);
+
+	/*
+	*@brief：检测图像中的RGB颜色物体，在IPC指定范围内。
+	@param  ipcindex：以第几号IPC为准，src图片是来自第几号IPC的。
+	@param src：待检测的图片。
+	@returns：返回世界坐标中的rgb物体
+	*/
+	std::vector<IPCobj> detectColor(int ipcindex, Mat src);
 
 };

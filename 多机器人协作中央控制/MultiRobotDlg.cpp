@@ -2439,21 +2439,6 @@ void CMultiRobotDlg::OnBnClickedCheck3()
 void CMultiRobotDlg::OnTest_toPoint()
 {
 	// TODO: 在此添加命令处理程序代码
-	//WaitForSingleObject(theApp.robotServer.aimirobot.hMutex, INFINITE);
-	//
-	//CMultiRobotApp::task foo; 
-	//for (size_t i = 0; i < 10; i++)
-	//{
-	//	foo.taskname = 1; foo.x = 0.3; foo.y = 0.2;
-	//	theApp.taskqueue[0].push_back(foo);
-	//	foo.taskname = 1; foo.x = 0.3; foo.y = 1.5;
-	//	theApp.taskqueue[0].push_back(foo);
-	//	foo.taskname = 1; foo.x = 1.7; foo.y = 1.5;
-	//	theApp.taskqueue[0].push_back(foo);
-	//	foo.taskname = 1; foo.x = 1.7; foo.y = 0.2;
-	//	theApp.taskqueue[0].push_back(foo);
-	//}
-	//ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
 
 	enum taskName
 	{
@@ -2463,10 +2448,29 @@ void CMultiRobotDlg::OnTest_toPoint()
 		uarmcap = 4,
 		uarmdown = 5
 	};
-	
 
-	theApp.uArmTaskQueue_push(taskName::uarmcap, Vec3f(0, -0.3, 0.02), Vec3f(-0.2, -0.60, 0.02));
-	theApp.uArmTaskQueue_push(taskName::uarmdown, Vec3f(0, -0.3, 0.02), Vec3f(-0.2, -0.60, 0.02));
+	WaitForSingleObject(theApp.IPCshowImgMutex, INFINITE);//锁挂
+	Mat proimg = theApp.IPCshowImg[2].clone();
+	ReleaseMutex(theApp.IPCshowImgMutex);//解锁
+	vector<IPCobj> rgbobj = theApp.visionLSys.detectColor(2, proimg);
+	printd("识别到物体：");
+	printd((int)rgbobj.size());
+	for (size_t i = 0; i < rgbobj.size(); i++)
+	{
+		
+			theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.60, 0.02));
+			//theApp.uArmTaskQueue_push(taskName::uarmcap, Vec3f(0, -0.3, 0.02), Vec3f(-0.2, -0.60, 0.02));
+			theApp.uArmTaskQueue_push(taskName::uarmdown, Vec3f(0, -0.3, 0.02), Vec3f(-0.2, -0.60, 0.02));	
+	}
+
+
+
+	/*theApp.uArmTaskQueue_push(taskName::uarmcap, Vec3f(0, -0.3, 0.02), Vec3f(-0.2, -0.60, 0.02));
+	theApp.uArmTaskQueue_push(taskName::uarmdown, Vec3f(0, -0.3, 0.02), Vec3f(-0.2, -0.60, 0.02));	
+*/
+
+
+	
 	//theApp.taskqueue_push(0, taskName::go_to, Point2f(-1, 0), 1);
 	//theApp.taskqueue_push(0, taskName::go_to, Point2f(-1, -1), 1);
 	//theApp.taskqueue_push(0, taskName::go_to, Point2f(0, -1), 1);

@@ -4,9 +4,9 @@ IPClocation
 并且提供了一个消息类IPCobj，可以作为消息输出，存储了在场地上有多少
 物体并且给出了他的位置。
 制作人：邹智强
-版  本：beta 1.0
+版  本：beta 1.1
 更  改：
-	1、添加大机器人定位支持
+	1、添加颜色识别功能，识别颜色并且定位出物体的位置。
 */
 
 #include "stdafx.h"
@@ -1439,4 +1439,175 @@ Mat IPClocation::paintObject(vector<IPCobj> input, Point2i lookCenter, int scale
 	return retcap;
 	
 
+}
+
+vector<IPCobj> IPClocation::detectColor(int ipcindex, Mat src)
+{
+	//定义颜色范围
+	Scalar bule_lower = Scalar(100, 43, 46);
+	Scalar bule_upper = Scalar(155, 255, 255);
+
+	Scalar blk_lower = Scalar(0, 0, 0);
+	Scalar blk_upper = Scalar(180, 255, 46);
+
+	Scalar red0_lower = Scalar(170, 100, 70);
+	Scalar red0_upper = Scalar(180, 255, 255);
+	Scalar red_lower = Scalar(0, 100, 70);
+	Scalar red_upper = Scalar(10, 255, 255);
+
+	Scalar green_lower = Scalar(35, 43, 46);
+	Scalar green_upper = Scalar(77, 255, 255);
+	//物体高度信息。
+	Eigen::Vector3d objheight[3];
+	objheight[0] << 0, 0, 0.01;
+	objheight[1] << 0, 0, 0.005;
+	objheight[2] << 0, 0, 0.018;
+
+	//计算识别范围
+	vector<Point> kregion;
+	Eigen::Matrix3d R;
+	cv2eigen(IPC[ipcindex].RwMatrix, R);
+	Eigen::Matrix3d M;
+	cv2eigen(IPC[ipcindex].cameraMatrix, M);
+	Eigen::Vector3d T;
+	cv2eigen(IPC[ipcindex].TwVec, T);
+	Eigen::Vector3d Pw[4];
+	Pw[0] << 0.1, 0.1, 0;
+	Pw[1] << 0.1, -0.4, 0;
+	Pw[2] << -0.3, -0.4, 0;
+	Pw[3] << -0.3, 0.1, 0;
+	for (size_t i = 0; i < 4; i++)
+	{
+		Eigen::Vector3d Pc = M*(R*Pw[i] + T);
+		Point NEWuvp = Point(Pc[0] / Pc[2], Pc[1] / Pc[2]);
+		kregion.push_back(NEWuvp);
+	}
+	//生成区域图像
+	Mat regionImg(src.rows, src.cols, CV_8UC1);
+	regionImg.setTo(0);
+	std::vector<std::vector<cv::Point >> kregions;
+	kregions.push_back(kregion);
+	fillPoly(regionImg, kregions, Scalar(255));
+
+	//检测图片中的rgb
+	Point2f obj[3];
+	for (size_t i = 0; i < 3; i++)
+	{
+		vector<Point2f> retvec;
+		Point2f ret = Point2f(0, 0);
+		Mat dst;
+		cvtColor(src, dst, COLOR_BGR2HSV);
+
+		if (i == 0)//r
+		{
+			Mat ds1, ds2;
+			inRange(dst, red0_lower, red0_upper, ds1);
+			inRange(dst, red_lower, red_upper, ds2);
+			bitwise_or(ds1, ds2, dst);
+			//只看区域内的情况
+			bitwise_and(regionImg, dst, dst);
+
+		}
+		else if (i == 2)//b
+		{
+			inRange(dst, bule_lower, bule_upper, dst);
+			//只看区域内的情况
+			bitwise_and(regionImg, dst, dst);
+		}
+		else if (i == 1)//g
+		{
+			inRange(dst, green_lower, green_upper, dst);
+			//只看区域内的情况
+			bitwise_and(regionImg, dst, dst);
+		}
+		// 腐蚀操作
+		Mat element = getStructuringElement(0, Size(5, 5));
+		erode(dst, dst, element);
+		dilate(dst, dst, element);
+		//定义轮廓和层次结构
+		vector<vector<Point> >contours;
+		vector<Vec4i> hierarchy;
+		//查找轮廓
+		findContours(dst, contours, hierarchy, CV_RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+		//遍历所有的顶层的轮廓，随机颜色绘制每个连接组件颜色
+		if (hierarchy.size() > 0)
+		{
+			vector<Moments> mom(contours.size());
+			vector<Point2f> m(contours.size());
+			for (size_t i = 0; i < contours.size(); i++)
+			{
+				mom[i] = moments(contours[i], false);
+				m[i] = Point(static_cast<float>(mom[i].m10 / mom[i].m00), static_cast<float>(mom[i].m01 / mom[i].m00));
+			}
+			for (size_t i = 0; i < m.size(); i++)
+			{
+				if (pointPolygonTest(kregion, m[i], false) == 1)
+				{
+					retvec.push_back(m[i]);
+				}
+			}
+			for (size_t i = 0; i < retvec.size(); i++)
+			{
+				ret.x += retvec[i].x;
+				ret.y += retvec[i].y;
+			}
+			ret.x = ret.x / retvec.size();
+			ret.y = ret.y / retvec.size();
+
+		}
+
+		obj[i]= ret;
+	}
+	
+	//计算物体的世界坐标点
+	vector<IPCobj> wdobj;
+	//计算b向量
+	Eigen::Vector3d B;
+	Eigen::Matrix3d RI;
+	cv2eigen(IPC[ipcindex].RwMatrixI, RI);
+	cv2eigen(IPC[ipcindex].TwVec, T);
+	B = RI*T;
+	//计算k向量
+	Eigen::Vector3d K;
+
+	Eigen::Matrix3d MI;
+	cv2eigen(IPC[ipcindex].cameraMatrixI, MI);
+	Eigen::Vector3d Pc;
+
+	for (size_t i = 0; i < 3; i++)
+	{
+		if (obj[i].x != 0)
+		{
+			IPCobj newwdobj;
+			//计算k向量
+			Pc << obj[i].x, obj[i].y, 1;
+			K=(RI*MI*Pc);
+			//计算世界坐标
+			Eigen::Matrix3d H;
+			H << -1, 0, K[0],
+				0, -1, K[1],
+				0, 0, K[2];
+			Eigen::Vector3d	Po = H.inverse()*(B+objheight[i]);
+			//Eigen::Vector3d	Po=H.colPivHouseholderQr().solve(B + objheight[i]);
+			//push到世界物体中去
+			newwdobj.coordinate3D = Vec3d(Po[0], Po[1], objheight[i][2]*2);
+			if (i == 0)
+			{
+				newwdobj.cls = IPCobj::objclass::redobj;
+				newwdobj.ID = 81;
+			}
+			else if (i == 1)
+			{
+				newwdobj.cls = IPCobj::objclass::greenobj;
+				newwdobj.ID = 82;
+			}
+			else if (i == 2)
+			{
+				newwdobj.cls = IPCobj::objclass::buleobj;
+				newwdobj.ID = 83;
+			}
+			wdobj.push_back(newwdobj);
+		}
+	}
+	return wdobj;
 }

@@ -151,7 +151,7 @@ void CMultiRobotApp::taskqueue_push(int index, int taskn, Point2f toP, int lf)
 void CMultiRobotApp::uArmTaskQueue_push(int taskn, Vec3f p1, Vec3f p2)
 {
 	CMultiRobotApp::task foo;
-	float dx = 293, dy = 386, dz = 18;
+	float dx = 293, dy = 386, dz = 0;
 
 	WaitForSingleObject(theApp.huArmTaskMutex, INFINITE);
 
@@ -169,7 +169,11 @@ void CMultiRobotApp::uArmTaskQueue_push(int taskn, Vec3f p1, Vec3f p2)
 		float dd = sqrt(foo.x*foo.x + foo.y*foo.y);
 		float dd1 = sqrt(foo.x1*foo.x1 + foo.y1*foo.y1);
 		if (dd > 350 || dd1 > 350)
+		{
+			ReleaseMutex(theApp.huArmTaskMutex);//½âËø
 			return;
+		}
+			
 	}
 	theApp.uArmTaskQueue.push_back(foo);
 
