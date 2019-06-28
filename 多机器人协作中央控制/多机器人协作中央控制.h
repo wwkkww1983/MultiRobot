@@ -103,7 +103,13 @@ public:
 	HANDLE hMultiRobotControlThread;//任务执行线程线程句柄
 	DWORD MultiRobotControlThreadID;//任务执行线程线程ID
 
-
+	//用于打印在mfc界面的输出框，跨线程操作
+	CString printd_str;
+	HANDLE printd_str_Mutex;//printd_str变量的互斥锁。
+	void printd(CString cout);//输出字符串信息
+	void printd(string cout);//输出字符串信息
+	void printd(int cout);
+	void printd(float cout);
 
 	//完成抓取信号
 	int finishGet_flag=0;

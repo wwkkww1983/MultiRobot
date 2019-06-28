@@ -121,6 +121,7 @@ public:
 	afx_msg void OnfinishGet_flag();
 	afx_msg void OnEnChangeEdit14();
 	afx_msg void OnSaveData();
+	afx_msg void OnStartRegTask();
 };
 
 //ºËÐÄ£¡£¡£¡£¡£¡

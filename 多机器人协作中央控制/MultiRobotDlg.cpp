@@ -142,6 +142,7 @@ BEGIN_MESSAGE_MAP(CMultiRobotDlg, CDialogEx)
 	ON_COMMAND(ID_32787, &CMultiRobotDlg::OnfinishGet_flag)
 	ON_EN_CHANGE(IDC_EDIT14, &CMultiRobotDlg::OnEnChangeEdit14)
 	ON_COMMAND(ID_32789, &CMultiRobotDlg::OnSaveData)
+	ON_COMMAND(ID_32785, &CMultiRobotDlg::OnStartRegTask)
 END_MESSAGE_MAP()
 
 
@@ -215,6 +216,9 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	SetTimer(1, 500, NULL);
 	//定时刷新机器的线速度角速度。
 	SetTimer(2, theApp.visionLSys.delayTime / CasheQueue_MAXSIZE, NULL);
+	//设置输出框刷新时间
+	theApp.printd_str_Mutex = CreateMutex(NULL, FALSE, NULL);
+	SetTimer(3, 50, NULL);
 
 	m_voltage = 0;
 	//初始化运动控制滑动条
@@ -1028,6 +1032,7 @@ DWORD WINAPI aimipuls_ThreadFun(LPVOID p)
 			ReleaseMutex(theApp.robotServer.aimirobot.hMutex);//解锁
 
 			Sleep(100);
+			
 		}
 	}
 	return 0;
@@ -1751,6 +1756,70 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 
 			bigtask = 0;
 		}
+		else if(bigtask==2)
+		{
+			WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+			theApp.bigtask = 0;
+			ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+			bigtask = 0;
+
+			//----------开始任务
+			//关键点
+			Point2f B = Point2f(-0.541, -0.65);
+			Point2f C = Point2f(0.045, -0.65);
+			Point2f D = Point2f(0.47, -0.608);
+			Point2f E = Point2f(-0.072, -1.199);
+			Point2f F = Point2f(-1.46, -1.10);
+			Point2f A[3] = { Point2f(-1.46, 0) ,Point2f(-1.46, -0.31) ,Point2f(-1.46, -0.623) };
+			//Point2f G[3] = { Point2f(-1.46, -0.623) ,Point2f(-1.46, 0.123) ,Point2f(-1.46, 0.223) };
+
+			//物体识别
+			WaitForSingleObject(theApp.IPCshowImgMutex, INFINITE);//锁挂
+			Mat proimg = theApp.IPCshowImg[2].clone();
+			ReleaseMutex(theApp.IPCshowImgMutex);//解锁
+			vector<IPCobj> rgbobj = theApp.visionLSys.detectColor(2, proimg);
+			//检查物体是否在可抓取范围内
+
+
+			//对应不同的机器人
+			UINT8* robot_index = new UINT8[rgbobj.size()];
+			for (size_t i = 0; i < rgbobj.size(); i++)
+			{
+				robot_index[i] = theApp.robotServer.findID(rgbobj[i].ID);
+			}
+
+			//开始任务
+			theApp.taskqueue_push(robot_index[0], taskName::go_to, B);
+			//theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[0].coordinate3D, Vec3f(-0.25, -0.65, 0.02));
+			for (size_t i = 0; i < rgbobj.size(); i++)
+			{
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, C);
+				while (theApp.taskqueue[robot_index[i]].size() != 0) Sleep(10);
+
+				if (i + 1<rgbobj.size())
+				{
+					theApp.taskqueue_push(robot_index[i + 1], taskName::go_to, B);
+				}
+				theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.65, 0.02));
+				theApp.uArmTaskQueue_push(taskName::uarmdown, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.65, 0.02));//机械臂放下
+				while (theApp.uArmTaskQueue.size() != 0) Sleep(10);
+
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, D);
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, E);
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, F);
+				//theApp.taskqueue_push(robot_index[i], taskName::go_to, G[i]);
+				theApp.taskqueue_push(robot_index[i], taskName::go_to, A[i]);
+				theApp.taskqueue_push(robot_index[i], taskName::duizhun, Point2f(1, 0), 0);
+
+
+				while (theApp.taskqueue[robot_index[i]].size() > 3) Sleep(10);
+
+			}
+
+
+
+
+		}
 
 		Sleep(100);
 	}
@@ -1867,6 +1936,23 @@ void CMultiRobotDlg::OnTimer(UINT_PTR nIDEvent)
 
 		ReleaseMutex(theApp.robotServer.hMutex);//解锁
 
+	}
+	case 3:
+	{
+		WaitForSingleObject(theApp.printd_str_Mutex, INFINITE);//锁挂
+		CString cpstr = theApp.printd_str;
+		ReleaseMutex(theApp.printd_str_Mutex);//解锁
+		if (!cpstr.IsEmpty())
+		{
+			cpstr += _T("\r\n"); // 回车换行
+			int lastLine = m_printout.LineIndex(m_printout.GetLineCount() - 1);
+			m_printout.SetSel(lastLine + 1, lastLine + 2, 0);
+			m_printout.ReplaceSel(cpstr); //在最后一行添加新的内容
+			UpdateData(false);
+			WaitForSingleObject(theApp.printd_str_Mutex, INFINITE);//锁挂
+			theApp.printd_str.Empty();
+			ReleaseMutex(theApp.printd_str_Mutex);//解锁
+		}
 	}
 	}
 
@@ -2341,6 +2427,7 @@ void CMultiRobotDlg::printd(int cout)
 {
 	CString str;
 	str.Format(_T("int:%d"), cout);
+
 	str += _T("\r\n"); // 回车换行
 	int lastLine = m_printout.LineIndex(m_printout.GetLineCount() - 1);
 	m_printout.SetSel(lastLine + 1, lastLine + 2, 0);
@@ -2528,3 +2615,12 @@ void CMultiRobotDlg::OnSaveData()
 	xml.release();
 }
 
+
+//开始识别分拣任务
+void CMultiRobotDlg::OnStartRegTask()
+{
+	// TODO: 在此添加命令处理程序代码
+	WaitForSingleObject(theApp.MultiRobotControl_Mutex, INFINITE);//锁挂
+	theApp.bigtask = 2;
+	ReleaseMutex(theApp.MultiRobotControl_Mutex);//解锁
+}

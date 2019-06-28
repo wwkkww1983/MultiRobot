@@ -1460,7 +1460,7 @@ vector<IPCobj> IPClocation::detectColor(int ipcindex, Mat src)
 	//物体高度信息。
 	Eigen::Vector3d objheight[3];
 	objheight[0] << 0, 0, 0.01;
-	objheight[1] << 0, 0, 0.005;
+	objheight[1] << 0, 0, 0.003;
 	objheight[2] << 0, 0, 0.018;
 
 	//计算识别范围

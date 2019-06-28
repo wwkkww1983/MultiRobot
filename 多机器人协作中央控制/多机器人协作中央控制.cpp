@@ -180,3 +180,35 @@ void CMultiRobotApp::uArmTaskQueue_push(int taskn, Vec3f p1, Vec3f p2)
 
 	ReleaseMutex(theApp.huArmTaskMutex);//解锁
 }
+
+void CMultiRobotApp::printd(CString cout)//输出字符串信息
+{
+	WaitForSingleObject(theApp.printd_str_Mutex, INFINITE);//锁挂
+	theApp.printd_str = cout;
+	ReleaseMutex(theApp.printd_str_Mutex);//解锁
+
+
+}
+void CMultiRobotApp::printd(string cout)
+{
+	CString str(cout.c_str());
+	WaitForSingleObject(theApp.printd_str_Mutex, INFINITE);//锁挂
+	theApp.printd_str = str;
+	ReleaseMutex(theApp.printd_str_Mutex);//解锁
+}
+void CMultiRobotApp::printd(int cout)
+{
+	CString str;
+	str.Format(_T("int:%d"), cout);
+	WaitForSingleObject(theApp.printd_str_Mutex, INFINITE);//锁挂
+	theApp.printd_str = str;
+	ReleaseMutex(theApp.printd_str_Mutex);//解锁
+}
+void CMultiRobotApp::printd(float cout)
+{
+	CString str;
+	str.Format(_T("float:%f"), cout);
+	WaitForSingleObject(theApp.printd_str_Mutex, INFINITE);//锁挂
+	theApp.printd_str = str;
+	ReleaseMutex(theApp.printd_str_Mutex);//解锁
+}
