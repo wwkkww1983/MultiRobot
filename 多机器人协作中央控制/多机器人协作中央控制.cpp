@@ -181,6 +181,27 @@ void CMultiRobotApp::uArmTaskQueue_push(int taskn, Vec3f p1, Vec3f p2)
 	ReleaseMutex(theApp.huArmTaskMutex);//解锁
 }
 
+INT8 CMultiRobotApp::judgeGrabRange(vector<IPCobj> inputobj)
+{
+	INT8 ret=0;
+	CMultiRobotApp::task foo;
+	float dx = 293, dy = 386, dz = 0;
+
+	for (size_t i = 0; i < inputobj.size(); i++)
+	{
+		Vec3f p1 = inputobj[i].coordinate3D;
+		foo.x = (p1[0] * 1000 + dx);
+		foo.y = (p1[1] * 1000 + dy);
+		float dd = sqrt(foo.x*foo.x + foo.y*foo.y);
+		if (dd > 350)
+		{
+			ret--;
+		}
+
+	}
+	return ret;
+}
+
 void CMultiRobotApp::printd(CString cout)//输出字符串信息
 {
 	WaitForSingleObject(theApp.printd_str_Mutex, INFINITE);//锁挂
@@ -212,3 +233,4 @@ void CMultiRobotApp::printd(float cout)
 	theApp.printd_str = str;
 	ReleaseMutex(theApp.printd_str_Mutex);//解锁
 }
+

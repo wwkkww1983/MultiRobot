@@ -286,7 +286,8 @@ BOOL CMultiRobotDlg::OnInitDialog()
 	theApp.huArmTaskMutex = CreateMutex(NULL, FALSE, NULL);
 	theApp.huArmTaskrunThread = CreateThread(NULL, 0, uArmTaskrun_ThreadFun, NULL, 0, &theApp.uArmTaskrunThreadID);
 
-
+	//为变量创建互斥锁
+	theApp.rgbobj_Mutex = CreateMutex(NULL, FALSE, NULL);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -728,8 +729,18 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 		if (theApp.show2Dflag == true)
 		{
 			Mat showobj;
-			
-			showobj = theApp.visionLSys.paintObject(theApp.obj, Point2i(pra_mouseCall.x, pra_mouseCall.y), pra_mouseCall.w);
+			//处理所有要显示在地图上的机器人与物体
+			WaitForSingleObject(theApp.rgbobj_Mutex, INFINITE);//锁挂
+			WaitForSingleObject(theApp.visionLSys.hMutex, INFINITE);//锁挂
+			vector<IPCobj> showAllobj = theApp.obj;
+			for (size_t i = 0; i < theApp.rgbobj.size(); i++)
+			{
+				showAllobj.push_back(theApp.rgbobj[i]);
+			}
+			ReleaseMutex(theApp.visionLSys.hMutex);//解锁
+			ReleaseMutex(theApp.rgbobj_Mutex);//解锁
+
+			showobj = theApp.visionLSys.paintObject(showAllobj, Point2i(pra_mouseCall.x, pra_mouseCall.y), pra_mouseCall.w);
 			//显示坐标
 			string zbstr;
 			string strx = to_string(pra_mouseCall.x_mouse_t); strx = strx.substr(0, strx.size() - 3);
@@ -799,7 +810,7 @@ DWORD WINAPI IPCvisionLocationSon_ShowThreadFun(LPVOID p)
 
 				}
 			}
-
+			
 
 			//显示地图
 			cv::imshow("showobj", showobj);
@@ -1697,7 +1708,7 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 			Point2f D = Point2f(0.47, -0.608);
 			Point2f E = Point2f(-0.072, -1.199);
 			Point2f F = Point2f(-1.46, -1.10);
-			Point2f A[3] = { Point2f(-1.46, 0) ,Point2f(-1.46, -0.31) ,Point2f(-1.46, -0.623) };
+			Point2f A[3] = { Point2f(-1.46, 0) ,Point2f(-1.46, -0.40) ,Point2f(-1.46, -0.8) };
 			//Point2f G[3] = { Point2f(-1.46, -0.623) ,Point2f(-1.46, 0.123) ,Point2f(-1.46, 0.223) };
 
 			//物体识别
@@ -1770,7 +1781,7 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 			Point2f D = Point2f(0.47, -0.608);
 			Point2f E = Point2f(-0.072, -1.199);
 			Point2f F = Point2f(-1.46, -1.10);
-			Point2f A[3] = { Point2f(-1.46, 0) ,Point2f(-1.46, -0.31) ,Point2f(-1.46, -0.623) };
+			Point2f A[3] = { Point2f(-1.46, 0) ,Point2f(-1.46, -0.40) ,Point2f(-1.46, -0.8) };
 			//Point2f G[3] = { Point2f(-1.46, -0.623) ,Point2f(-1.46, 0.123) ,Point2f(-1.46, 0.223) };
 
 			//物体识别
@@ -1779,44 +1790,65 @@ DWORD WINAPI MultiRobotControl_ThreadFun(LPVOID p)
 			ReleaseMutex(theApp.IPCshowImgMutex);//解锁
 			vector<IPCobj> rgbobj = theApp.visionLSys.detectColor(2, proimg);
 			//检查物体是否在可抓取范围内
+			INT8 rangflag = theApp.judgeGrabRange(rgbobj);
+			//将识别结果传输给全局变量
+			WaitForSingleObject(theApp.rgbobj_Mutex, INFINITE);//锁挂
+			theApp.rgbobj = rgbobj;
+			ReleaseMutex(theApp.rgbobj_Mutex);//解锁
 
+			
 
-			//对应不同的机器人
-			UINT8* robot_index = new UINT8[rgbobj.size()];
-			for (size_t i = 0; i < rgbobj.size(); i++)
+			//满足条件才开始任务
+			if (rgbobj.size() == 3 && theApp.robotServer.getRobotListNum() == 3 && rangflag>=0)
 			{
-				robot_index[i] = theApp.robotServer.findID(rgbobj[i].ID);
-			}
-
-			//开始任务
-			theApp.taskqueue_push(robot_index[0], taskName::go_to, B);
-			//theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[0].coordinate3D, Vec3f(-0.25, -0.65, 0.02));
-			for (size_t i = 0; i < rgbobj.size(); i++)
-			{
-				theApp.taskqueue_push(robot_index[i], taskName::go_to, C);
-				while (theApp.taskqueue[robot_index[i]].size() != 0) Sleep(10);
-
-				if (i + 1<rgbobj.size())
+				//对应不同的机器人
+				UINT8* robot_index = new UINT8[rgbobj.size()];
+				for (size_t i = 0; i < rgbobj.size(); i++)
 				{
-					theApp.taskqueue_push(robot_index[i + 1], taskName::go_to, B);
+					robot_index[i] = theApp.robotServer.findID(rgbobj[i].ID);
 				}
-				theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.65, 0.02));
-				theApp.uArmTaskQueue_push(taskName::uarmdown, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.65, 0.02));//机械臂放下
-				while (theApp.uArmTaskQueue.size() != 0) Sleep(10);
 
-				theApp.taskqueue_push(robot_index[i], taskName::go_to, D);
-				theApp.taskqueue_push(robot_index[i], taskName::go_to, E);
-				theApp.taskqueue_push(robot_index[i], taskName::go_to, F);
-				//theApp.taskqueue_push(robot_index[i], taskName::go_to, G[i]);
-				theApp.taskqueue_push(robot_index[i], taskName::go_to, A[i]);
-				theApp.taskqueue_push(robot_index[i], taskName::duizhun, Point2f(1, 0), 0);
+				//开始任务
+				theApp.taskqueue_push(robot_index[0], taskName::go_to, B);
+				//theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[0].coordinate3D, Vec3f(-0.25, -0.65, 0.02));
+				for (size_t i = 0; i < rgbobj.size(); i++)
+				{
+					theApp.taskqueue_push(robot_index[i], taskName::go_to, C);
+					while (theApp.taskqueue[robot_index[i]].size() != 0) Sleep(10);
+
+					if (i + 1 < rgbobj.size())
+					{
+						theApp.taskqueue_push(robot_index[i + 1], taskName::go_to, B);
+					}
+					theApp.uArmTaskQueue_push(taskName::uarmcap, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.65, 0.02));
+					theApp.uArmTaskQueue_push(taskName::uarmdown, rgbobj[i].coordinate3D, Vec3f(-0.2, -0.65, 0.02));//机械臂放下
+					while (theApp.uArmTaskQueue.size() != 0) Sleep(10);
+
+					theApp.taskqueue_push(robot_index[i], taskName::go_to, D);
+					theApp.taskqueue_push(robot_index[i], taskName::go_to, E);
+					theApp.taskqueue_push(robot_index[i], taskName::go_to, F);
+					//theApp.taskqueue_push(robot_index[i], taskName::go_to, G[i]);
+					theApp.taskqueue_push(robot_index[i], taskName::go_to, A[i]);
+					theApp.taskqueue_push(robot_index[i], taskName::duizhun, Point2f(1, 0), 0);
 
 
-				while (theApp.taskqueue[robot_index[i]].size() > 3) Sleep(10);
+					while (theApp.taskqueue[robot_index[i]].size() > 3) Sleep(10);
+
+				}
+				//结束任务，清除识别显示
+				WaitForSingleObject(theApp.rgbobj_Mutex, INFINITE);//锁挂
+				theApp.rgbobj.clear();
+				ReleaseMutex(theApp.rgbobj_Mutex);//解锁
+			}
+			else
+			{
+				theApp.printd("错误：不满足分拣条件");
+				//分析错误：
+				if(rgbobj.size() != 3) theApp.printd("错误分析：物体数量少于3个");
+				if (theApp.robotServer.getRobotListNum() != 3) theApp.printd("错误分析：搬运机器人数量少于3个");
+				if (rangflag < 0) theApp.printd("错误分析：物体离机械臂太远！");
 
 			}
-
-
 
 
 		}

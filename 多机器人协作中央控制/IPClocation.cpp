@@ -1434,6 +1434,32 @@ Mat IPClocation::paintObject(vector<IPCobj> input, Point2i lookCenter, int scale
 			}
 		}
 	}
+	//标记物体点
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		if (input[i].cls != IPCobj::Robot&& input[i].dimension == 3)
+		{
+			//坐标转换，将世界坐标转换到map图片像素坐标。
+			Point2i pointMap;
+			pointMap.x = oPoint.x + points[i].x*m2pix;
+			pointMap.y = oPoint.y - points[i].y*m2pix;
+			//判断点是否在retcap内
+			if ((pointMap.x >(int)(rect.x)) && (pointMap.x<(int)(rect.x + scale)) && (pointMap.y>rect.y) && (pointMap.y < (int)(rect.y + scale)))
+			{
+				Point pp;
+				pp.x = (pointMap.x - rect.x)*retmap_size / scale;
+				pp.y = (pointMap.y - rect.y)*retmap_size / scale;
+
+				circle(retcap, pp, 5, Scalar(128, 0, 128), -1);
+				//drawArrow(retcap, pp, directions[i], retmap_size / 30.0);
+				//显示id号
+				string idstr = "id:";
+
+				putText(retcap, idstr + to_string(input[i].ID), Point(pp.x, pp.y), FONT_HERSHEY_COMPLEX, 0.6, Scalar(0, 0, 0), 1, 8);
+
+			}
+		}
+	}
 	
 	
 	return retcap;
@@ -1591,6 +1617,7 @@ vector<IPCobj> IPClocation::detectColor(int ipcindex, Mat src)
 			//Eigen::Vector3d	Po=H.colPivHouseholderQr().solve(B + objheight[i]);
 			//push到世界物体中去
 			newwdobj.coordinate3D = Vec3d(Po[0], Po[1], objheight[i][2]*2);
+			newwdobj.dimension = 3;
 			if (i == 0)
 			{
 				newwdobj.cls = IPCobj::objclass::redobj;

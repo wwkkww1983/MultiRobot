@@ -111,12 +111,20 @@ public:
 	void printd(int cout);
 	void printd(float cout);
 
+	//识别到的物体位置
+	vector<IPCobj> rgbobj;
+	HANDLE rgbobj_Mutex;//rgbobj变量的互斥锁。
+
+
 	//完成抓取信号
 	int finishGet_flag=0;
 
 	//定位轨迹记录:空间坐标加时间坐标（x,y,z,t）
 	vector<Vec4f> track_data;
 	bool track_data_flag;
+
+	//判断识别到的物体是否在机械臂可抓取范围内
+	INT8 judgeGrabRange(vector<IPCobj> inputobj);//负数代表抓不到，0代表抓得到。
 
 	DECLARE_MESSAGE_MAP()
 	virtual int ExitInstance();
