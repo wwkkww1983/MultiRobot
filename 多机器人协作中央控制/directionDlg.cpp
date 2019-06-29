@@ -47,6 +47,7 @@ BOOL directionDlg::OnInitDialog()
 	m_contents.InsertItem(_T("机器人列表"), hRobotMFC);
 	m_contents.InsertItem(_T("机器人传感器数据"), hRobotMFC);
 	m_contents.InsertItem(_T("机器人运动操作"), hRobotMFC);
+	m_contents.InsertItem(_T("标定世界坐标系"), hRobotMFC);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -72,7 +73,7 @@ void directionDlg::OnNMClickTree1(NMHDR *pNMHDR, LRESULT *pResult)
 		m_readmedisplay.SetSel(0, -1);
 		m_readmedisplay.ReplaceSel(_T(""));
 		//添加内容
-		CString neirongstr = _T("机器人列表\r\n会显示已经连上的turbot机器人，选上可以得到数据以及进行控制");
+		CString neirongstr = _T("机器人列表\r\n  会显示已经连上的turbot机器人，选上可以得到数据以及进行控制\r\n  如果爱米家机器人连上了，那么会显示爱米家机器人的ID号，否则显示-1");
 		m_readmedisplay.ReplaceSel(neirongstr); 
 	}
 	else if(str=="机器人传感器数据")
@@ -81,7 +82,7 @@ void directionDlg::OnNMClickTree1(NMHDR *pNMHDR, LRESULT *pResult)
 		m_readmedisplay.SetSel(0, -1);
 		m_readmedisplay.ReplaceSel(_T(""));
 		//添加内容
-		CString neirongstr = _T("机器人传感器数据\r\n未加入内容");
+		CString neirongstr = _T("机器人传感器数据\r\n选中机器人列表中的机器人，传感器栏会返回选中的机器人的状态");
 		m_readmedisplay.ReplaceSel(neirongstr);
 	}
 	else if(str== "机器人运动操作")
@@ -93,6 +94,16 @@ void directionDlg::OnNMClickTree1(NMHDR *pNMHDR, LRESULT *pResult)
 		CString neirongstr = _T("机器人运动操作\r\nWSAD控制turbot机器人，选中机器人进行控制。\r\n上下左右控制爱米家机器人。");
 		m_readmedisplay.ReplaceSel(neirongstr);
 	}
+	else if (str == "标定世界坐标系")
+	{
+		//清空
+		m_readmedisplay.SetSel(0, -1);
+		m_readmedisplay.ReplaceSel(_T(""));
+		//添加内容
+		CString neirongstr = _T("标定世界坐标系\r\n  把11号长宽为0.1784米的ARtag码放入四个IP摄像头都拍摄的到的地方，通过菜单栏->操作->开始标定世界坐标系。");
+		m_readmedisplay.ReplaceSel(neirongstr);
+	}
+
 }
 
 

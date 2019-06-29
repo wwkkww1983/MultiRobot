@@ -78,6 +78,7 @@ public:
 	afx_msg void OnBnClickedButton2();
 	// 用于表示wsad按键是否使用滑动块的参数来跑
 	CButton m_wsadFlag;
+	//帮助页面
 	afx_msg void On32775();
 	// 显示IP地址和端口号
 	CEdit m_disIPaddr;

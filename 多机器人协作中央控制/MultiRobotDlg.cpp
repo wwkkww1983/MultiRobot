@@ -2499,7 +2499,7 @@ void CMultiRobotDlg::Onshow2Donoff()
 void CMultiRobotDlg::Onvision()
 {
 	// TODO: 在此添加命令处理程序代码
-	AfxMessageBox(_T("测试版\n\r v0.13"));
+	AfxMessageBox(_T("v1.11"));
 
 }
 
